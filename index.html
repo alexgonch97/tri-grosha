@@ -1,0 +1,3995 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Постоялый двор «Три Гроша» — Зонк / Farkle</title>
+  <!-- Telegram WebApp SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Marcellus&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100vw;
+      height: 100dvh;
+      max-height: 100dvh;
+      overflow: hidden;
+      font-family: 'Marcellus', 'Georgia', serif;
+      background: #0f0906;
+      color: #fceabb;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Tavern Background Visuals */
+    .tavern-bg {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      background: 
+        radial-gradient(circle at 50% 30%, rgba(243, 156, 18, 0.18) 0%, rgba(15, 9, 6, 0.95) 75%),
+        radial-gradient(circle at 10% 80%, rgba(184, 134, 11, 0.12) 0%, transparent 50%),
+        radial-gradient(circle at 90% 80%, rgba(184, 134, 11, 0.12) 0%, transparent 50%),
+        repeating-linear-gradient(45deg, #180e08 0px, #180e08 10px, #140b06 10px, #140b06 20px);
+      background-blend-mode: color-dodge, normal, normal, normal;
+      pointer-events: none;
+    }
+
+    .tavern-vignette {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.85);
+      pointer-events: none;
+    }
+
+    /* App Container (mobile-first, centered, no page scroll) */
+    #app {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      max-width: 480px;
+      margin: 0 auto;
+      height: 100dvh;
+      max-height: 100dvh;
+      padding: 8px 12px 12px 12px;
+      gap: 8px;
+      overflow: hidden;
+      justify-content: space-between;
+    }
+
+    /* Top Bar */
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: linear-gradient(180deg, #2c1b10 0%, #1a1009 100%);
+      border: 2px solid #8b6b3e;
+      border-radius: 10px;
+      padding: 6px 10px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 223, 150, 0.2);
+    }
+
+    /* ==========================================================================
+       ЗАЛ ТАВЕРНЫ: живая сцена с соперниками (главный экран)
+       ========================================================================== */
+    #tavernScreen {
+      overflow: hidden;
+    }
+
+    .hall-scene {
+      position: relative;
+      flex: 1 1 auto;
+      min-height: 172px;
+      border-radius: 14px;
+      border: 3px solid #4a3421;
+      overflow: hidden;
+      background-color: #120b06;
+      background-image:
+        url('assets/bg-tavern.jpg'),
+        radial-gradient(circle at 50% 34%, rgba(255, 178, 74, 0.28) 0%, rgba(16, 10, 6, 0.9) 68%),
+        radial-gradient(circle at 10% 88%, rgba(184, 134, 11, 0.18) 0%, transparent 55%),
+        radial-gradient(circle at 88% 12%, rgba(255, 132, 32, 0.2) 0%, transparent 55%),
+        repeating-linear-gradient(90deg, #1d1209 0px, #1d1209 14px, #150c07 14px, #150c07 28px),
+        repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.22) 0px, rgba(0, 0, 0, 0.22) 2px, transparent 2px, transparent 20px);
+      background-size: cover, cover, cover, cover, auto, auto;
+      background-position: center, center, center, center, center, center;
+      box-shadow: inset 0 0 46px rgba(0, 0, 0, 0.9), 0 8px 22px rgba(0, 0, 0, 0.65);
+    }
+
+    /* Живой свет, огонь и полумрак зала */
+    .hall-veil {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      background: linear-gradient(180deg, rgba(8, 5, 2, 0.62) 0%, rgba(8, 5, 2, 0.1) 42%, rgba(8, 5, 2, 0.72) 100%);
+      pointer-events: none;
+    }
+
+    .hall-glow {
+      position: absolute;
+      inset: -12%;
+      z-index: 2;
+      background: radial-gradient(circle at 50% 58%, rgba(255, 186, 78, 0.3) 0%, rgba(255, 150, 40, 0.1) 42%, transparent 68%);
+      animation: hallFlicker 4.6s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    @keyframes hallFlicker {
+      0%, 100% { opacity: 0.72; }
+      30% { opacity: 1; }
+      58% { opacity: 0.6; }
+      78% { opacity: 0.92; }
+    }
+
+    .hall-fire {
+      position: absolute;
+      right: -8%;
+      top: -4%;
+      z-index: 2;
+      width: 52%;
+      height: 40%;
+      background: radial-gradient(circle at 62% 62%, rgba(255, 154, 44, 0.5) 0%, rgba(196, 66, 10, 0.22) 42%, transparent 72%);
+      animation: hallFlicker 2.9s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    .hall-dark-corner {
+      position: absolute;
+      right: 0;
+      top: 0;
+      z-index: 3;
+      width: 40%;
+      height: 44%;
+      background: radial-gradient(circle at 100% 0%, rgba(0, 0, 0, 0.5) 0%, transparent 72%);
+      pointer-events: none;
+    }
+
+    /* Мебель зала: стойка, бочка у входа и лавка */
+    .hall-prop {
+      position: absolute;
+      z-index: 3;
+      border-radius: 8px;
+      background: linear-gradient(180deg, rgba(104, 70, 36, 0.78) 0%, rgba(46, 29, 15, 0.85) 100%);
+      border: 1px solid rgba(212, 175, 55, 0.22);
+      box-shadow: inset 0 1px 1px rgba(255, 220, 160, 0.16), 0 6px 14px rgba(0, 0, 0, 0.6);
+      pointer-events: none;
+    }
+
+    .hall-counter { left: 0; top: 30%; width: 24%; height: 10%; border-radius: 0 10px 10px 0; }
+    .hall-counter::before { content: ''; position: absolute; left: 0; right: 0; top: 5px; height: 3px; background: rgba(212, 175, 55, 0.35); }
+    .hall-barrel { left: 1%; bottom: 1%; width: 15%; height: 19%; border-radius: 12px 12px 8px 8px; }
+    .hall-barrel::before, .hall-barrel::after { content: ''; position: absolute; left: 0; right: 0; height: 2px; background: rgba(212, 175, 55, 0.45); }
+    .hall-barrel::before { top: 22%; }
+    .hall-barrel::after { bottom: 22%; }
+    .hall-bench { right: 0; top: 70%; width: 24%; height: 7%; border-radius: 10px 0 0 10px; }
+
+    .hall-hint {
+      position: absolute;
+      left: 50%;
+      bottom: 6px;
+      transform: translateX(-50%);
+      z-index: 9;
+      padding: 3px 9px;
+      border-radius: 9px;
+      background: rgba(12, 8, 4, 0.74);
+      border: 1px solid rgba(212, 175, 55, 0.4);
+      font-size: 9.5px;
+      color: #e6c885;
+      white-space: nowrap;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+
+    .hall-hint.hidden { opacity: 0; }
+
+    /* Соперники — портретные медальоны в разных зонах зала */
+    .npc-layer { position: absolute; inset: 0; z-index: 6; }
+
+    .npc-spot {
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      padding: 0;
+      margin: 0;
+      border: none;
+      background: none;
+      color: inherit;
+      font-family: inherit;
+      cursor: pointer;
+      transform-origin: 50% 100%;
+      transition: transform 0.18s ease, filter 0.18s ease;
+    }
+
+    .npc-spot:hover, .npc-spot.selected { transform: scale(1.09); }
+    .npc-spot:active { transform: scale(1.04); }
+    .npc-spot.locked { filter: grayscale(0.55) brightness(0.86); }
+
+    .npc-sivka { left: 6%; bottom: 6%; }
+    .npc-ignat { left: 5%; top: 5%; }
+    .npc-yashka { right: 5%; top: 43%; }
+    .npc-lovchiy { right: 5%; top: 5%; }
+
+    .npc-glow {
+      position: absolute;
+      left: 50%;
+      top: 30px;
+      width: 106px;
+      height: 106px;
+      margin: -53px 0 0 -53px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255, 210, 100, 0.5) 0%, rgba(255, 176, 48, 0.2) 46%, transparent 72%);
+      opacity: 0;
+      transition: opacity 0.25s ease;
+      pointer-events: none;
+    }
+
+    .npc-spot:hover .npc-glow, .npc-spot.selected .npc-glow {
+      opacity: 1;
+      animation: haloPulse 2.2s ease-in-out infinite;
+    }
+
+    .npc-medallion {
+      position: relative;
+      width: 58px;
+      height: 68px;
+      border-radius: 29px 29px 11px 11px;
+      overflow: hidden;
+      border: 2px solid #a67c48;
+      background: radial-gradient(circle at 38% 26%, #4a3421 0%, #1a1009 78%);
+      box-shadow: inset 0 -8px 14px rgba(0, 0, 0, 0.7), 0 5px 12px rgba(0, 0, 0, 0.6);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .npc-spot:hover .npc-medallion, .npc-spot.selected .npc-medallion {
+      border-color: #ffd700;
+      box-shadow: 0 0 16px rgba(255, 215, 0, 0.6), inset 0 -8px 14px rgba(0, 0, 0, 0.6);
+    }
+
+    .npc-svg, .npc-photo {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .npc-photo { object-fit: cover; border-radius: inherit; }
+
+    .npc-plate {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 1px 6px 2px;
+      border-radius: 8px;
+      background: linear-gradient(180deg, rgba(32, 20, 11, 0.92) 0%, rgba(13, 8, 4, 0.92) 100%);
+      border: 1px solid rgba(212, 175, 55, 0.45);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.55);
+      white-space: nowrap;
+      transition: border-color 0.2s ease;
+    }
+
+    .npc-spot:hover .npc-plate, .npc-spot.selected .npc-plate { border-color: #ffd700; }
+
+    .npc-plate-name { font-family: 'Cinzel', serif; font-size: 9px; font-weight: 700; color: #f0d9a8; }
+    .npc-plate-bet { font-size: 8.5px; font-weight: 700; color: #ffd700; }
+    .npc-spot.locked .npc-plate-bet { color: #e0776f; }
+
+    /* Карточка-свиток выбранного соперника */
+    .npc-scroll {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      z-index: 12;
+      width: min(252px, 80%);
+      padding: 11px 12px 12px;
+      border-radius: 12px;
+      background: linear-gradient(180deg, #fdf3d8 0%, #ecd9ac 100%);
+      border: 2px solid #8b6b3e;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.75);
+      color: #2a1c10;
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, -50%) scale(0.9);
+      transition: opacity 0.22s ease, transform 0.22s ease;
+    }
+
+    .npc-scroll.show {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    .npc-scroll::before, .npc-scroll::after {
+      content: '';
+      position: absolute;
+      left: -7px;
+      right: -7px;
+      height: 9px;
+      border-radius: 6px;
+      background: linear-gradient(180deg, #8a6a3a 0%, #4a3318 100%);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+    }
+
+    .npc-scroll::before { top: -5px; }
+    .npc-scroll::after { bottom: -5px; }
+
+    .scroll-head {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      padding-bottom: 5px;
+      margin-bottom: 6px;
+      border-bottom: 1px solid rgba(139, 107, 62, 0.5);
+    }
+
+    .scroll-name { font-family: 'Cinzel', serif; font-size: 13px; font-weight: 900; color: #5a3a12; }
+    .scroll-title { font-size: 10px; font-style: italic; color: #7a6247; }
+    .scroll-line { margin: 0 0 7px; font-size: 11.5px; line-height: 1.35; color: #3f2c18; }
+
+    .scroll-bet {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 11px;
+      color: #5a3a12;
+    }
+
+    .scroll-bet strong { font-family: 'Cinzel', serif; font-size: 13px; color: #8b1a1a; }
+    .npc-scroll .scroll-play { width: 100%; font-size: 12px; padding: 10px 6px; }
+    .scroll-tip { margin-top: 6px; font-size: 9.5px; text-align: center; color: #7a6247; }
+    .scroll-hint { margin-top: 6px; font-size: 10px; text-align: center; font-weight: 700; color: #8b1a1a; }
+
+    .tavern-menu {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .tavern-menu .btn {
+      position: relative;
+      font-size: 11.5px;
+      padding: 11px 5px;
+    }
+
+    .beg-btn {
+      width: 100%;
+      margin-top: 2px;
+      font-size: 12.5px;
+      padding: 11px 8px;
+    }
+
+    .dot-badge {
+      position: absolute;
+      top: -7px;
+      right: -7px;
+      min-width: 21px;
+      height: 21px;
+      padding: 0 5px;
+      border-radius: 11px;
+      background: #8b0000;
+      border: 1.5px solid #ffd700;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 10px rgba(255, 60, 0, 0.8);
+    }
+
+    .dot-badge.show {
+      display: flex;
+      animation: pulseDot 1.2s infinite;
+    }
+
+    @keyframes pulseDot {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.18); }
+    }
+
+    .top-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .icon-btn {
+      background: linear-gradient(180deg, #4a3421 0%, #2a1c10 100%);
+      border: 1.5px solid #a67c48;
+      border-radius: 8px;
+      color: #fceabb;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+      transition: transform 0.1s, border-color 0.2s;
+    }
+
+    .icon-btn:active {
+      transform: scale(0.92);
+      border-color: #ffd700;
+    }
+
+    /* Scoreboard */
+    .scoreboard {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 8px;
+      align-items: center;
+      margin-top: 4px;
+    }
+
+    .player-card {
+      background: linear-gradient(180deg, rgba(38, 24, 15, 0.95) 0%, rgba(22, 13, 8, 0.95) 100%);
+      border: 2px solid #6b4e2e;
+      border-radius: 10px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+
+    .player-card.active-turn {
+      border-color: #ffd700;
+      box-shadow: 0 0 12px rgba(255, 215, 0, 0.4);
+    }
+
+    .player-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .player-name {
+      font-family: 'Cinzel', serif;
+      font-size: 13px;
+      font-weight: 700;
+      color: #e6c885;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 90px;
+    }
+
+    .turn-badge {
+      font-size: 10px;
+      background: #8b0000;
+      color: #ffffff;
+      padding: 1px 5px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: none;
+    }
+
+    .player-card.active-turn .turn-badge {
+      display: inline-block;
+    }
+
+    .score-main {
+      font-size: 20px;
+      font-weight: 900;
+      color: #ffffff;
+      line-height: 1;
+    }
+
+    .score-target {
+      font-size: 11px;
+      color: #a38f78;
+    }
+
+    .progress-bar-container {
+      width: 100%;
+      height: 6px;
+      background: #100a06;
+      border-radius: 3px;
+      overflow: hidden;
+      border: 1px solid #4a3421;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #b8860b, #ffd700);
+      width: 0%;
+      transition: width 0.4s ease;
+    }
+
+    .turn-score-label {
+      font-size: 11px;
+      color: #d4af37;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .vs-emblem {
+      font-family: 'Cinzel', serif;
+      font-size: 14px;
+      font-weight: 900;
+      color: #8b6b3e;
+      background: #1a1009;
+      border: 1px solid #6b4e2e;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.8);
+    }
+
+    .ai-status {
+      font-size: 11px;
+      color: #e0aa3e;
+      font-style: italic;
+      height: 14px;
+      text-align: center;
+    }
+
+    /* Main Tavern Table Surface (тёмный дуб + assets/bg-table.jpg) */
+    .tavern-table {
+      flex: 1;
+      min-height: 0;
+      background-color: #1c1109;
+      background-image:
+        url('assets/bg-table.jpg'),
+        radial-gradient(ellipse at 50% 42%, rgba(84, 56, 32, 0.55) 0%, rgba(18, 11, 6, 0.92) 72%),
+        repeating-linear-gradient(92deg, #2a1a10 0px, #2a1a10 3px, #22150c 3px, #22150c 7px),
+        repeating-linear-gradient(2deg, rgba(0, 0, 0, 0.22) 0px, rgba(0, 0, 0, 0.22) 1px, transparent 1px, transparent 9px);
+      background-size: cover, cover, auto, auto;
+      background-position: center, center, center, center;
+      border: 4px solid #4a3421;
+      border-radius: 16px;
+      box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.9), 0 8px 24px rgba(0, 0, 0, 0.7);
+      margin: 6px 0;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      isolation: isolate;
+      perspective: 800px;
+    }
+
+    .table-section-title {
+      font-family: 'Cinzel', serif;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #8b6b3e;
+      text-align: center;
+      margin-bottom: 4px;
+    }
+
+    .dice-area {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      min-height: 76px;
+      padding: 6px;
+      position: relative;
+      perspective: 520px;
+    }
+
+    /* Всплывающие очки над костями */
+    .float-score {
+      position: absolute;
+      left: 50%;
+      top: 2px;
+      z-index: 6;
+      transform: translate(-50%, 0);
+      font-family: 'Cinzel', serif;
+      font-weight: 900;
+      font-size: 17px;
+      color: #ffd700;
+      text-shadow: 0 2px 6px rgba(0, 0, 0, 0.95), 0 0 12px rgba(255, 190, 60, 0.8);
+      pointer-events: none;
+      animation: floatScore 1.15s ease-out forwards;
+    }
+
+    @keyframes floatScore {
+      0% { opacity: 0; transform: translate(-50%, 8px) scale(0.7); }
+      22% { opacity: 1; transform: translate(-50%, -2px) scale(1.12); }
+      100% { opacity: 0; transform: translate(-50%, -42px) scale(1); }
+    }
+
+    .kept-area {
+      background: rgba(0, 0, 0, 0.35);
+      border: 1.5px dashed #5a4027;
+      border-radius: 12px;
+      padding: 6px;
+      min-height: 80px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Bone Dice Design (объёмные 3D-кубики) */
+    .die {
+      width: 52px;
+      height: 52px;
+      background: linear-gradient(150deg, #ffffff 0%, #f5efdd 40%, #e2d8bf 74%, #cabfa2 100%);
+      border-radius: 11px;
+      box-shadow:
+        0 7px 15px rgba(0, 0, 0, 0.62),
+        0 3px 5px rgba(0, 0, 0, 0.45),
+        inset 0 2px 3px rgba(255, 255, 255, 0.95),
+        inset 0 -5px 9px rgba(122, 102, 70, 0.45),
+        inset 4px 0 7px rgba(0, 0, 0, 0.07);
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      padding: 6px;
+      cursor: pointer;
+      user-select: none;
+      transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s, border 0.2s;
+      position: relative;
+      border: 1px solid rgba(160, 140, 105, 0.85);
+      transform-style: preserve-3d;
+    }
+
+    .die::before {
+      content: '';
+      position: absolute;
+      inset: 2px;
+      border-radius: 9px;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.72) 0%, rgba(255, 255, 255, 0) 48%);
+      pointer-events: none;
+    }
+
+    .die::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 10px;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4), inset 0 -4px 8px rgba(0, 0, 0, 0.16);
+      pointer-events: none;
+    }
+
+    .die.rolling {
+      animation: diceRoll 0.5s ease-in-out infinite alternate;
+    }
+
+    .dice-area .die.rolling:nth-child(2) { animation-delay: 0.04s; }
+    .dice-area .die.rolling:nth-child(3) { animation-delay: 0.09s; }
+    .dice-area .die.rolling:nth-child(4) { animation-delay: 0.13s; }
+    .dice-area .die.rolling:nth-child(5) { animation-delay: 0.18s; }
+    .dice-area .die.rolling:nth-child(6) { animation-delay: 0.22s; }
+
+    @keyframes diceRoll {
+      0% { transform: rotate(-16deg) rotateY(0deg) scale(0.92) translateY(-6px); }
+      35% { transform: rotate(14deg) rotateY(160deg) scale(1.09) translateY(5px); }
+      70% { transform: rotate(-9deg) rotateY(290deg) scale(1) translateY(-3px); }
+      100% { transform: rotate(-16deg) rotateY(360deg) scale(0.92) translateY(-6px); }
+    }
+
+    .die.selected {
+      border: 2px solid #ffd700;
+      box-shadow: 0 0 16px rgba(255, 215, 0, 0.8), 0 6px 12px rgba(0,0,0,0.5);
+      transform: translateY(-8px) scale(1.06);
+      background: linear-gradient(145deg, #fffdf5 0%, #f7ecc8 100%);
+    }
+
+    .die.banked {
+      opacity: 0.85;
+      border-color: #8b6b3e;
+      cursor: default;
+      transform: scale(0.95);
+      background: linear-gradient(145deg, #e6ded0 0%, #c8bfa9 100%);
+    }
+
+    .die.disabled {
+      cursor: not-allowed;
+      opacity: 0.9;
+    }
+
+    .pip {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      justify-self: center;
+      align-self: center;
+      background: radial-gradient(circle at 36% 30%, #c81414 0%, #900000 42%, #3d0000 100%);
+      box-shadow: inset 0 1px 2px rgba(255, 130, 130, 0.4), inset 0 -2px 3px rgba(0, 0, 0, 0.78), 0 1px 1px rgba(255, 255, 255, 0.45);
+      display: none;
+    }
+
+    /* Opponent speech bubble */
+    .speech-bubble {
+      position: relative;
+      align-self: center;
+      max-width: 94%;
+      margin: 0 auto;
+      background: linear-gradient(180deg, #fdf3d8 0%, #e6d3a4 100%);
+      color: #2a1c10;
+      border: 2px solid #8b6b3e;
+      border-radius: 12px;
+      padding: 6px 11px;
+      font-size: 12px;
+      line-height: 1.25;
+      text-align: center;
+      box-shadow: 0 5px 14px rgba(0, 0, 0, 0.6);
+      opacity: 0;
+      transform: translateY(-8px);
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      pointer-events: none;
+    }
+
+    .speech-bubble.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .speech-bubble::after {
+      content: '';
+      position: absolute;
+      bottom: -9px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-left: 8px solid transparent;
+      border-right: 8px solid transparent;
+      border-top: 9px solid #8b6b3e;
+    }
+
+    /* Table navigation */
+    .table-nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-ghost {
+      font-family: 'Cinzel', serif;
+      font-size: 11px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1.5px solid #8b6b3e;
+      background: linear-gradient(180deg, #33231a 0%, #1c1107 100%);
+      color: #e6c885;
+      cursor: pointer;
+      white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    }
+
+    .btn-ghost:active {
+      transform: scale(0.95);
+      border-color: #ffd700;
+    }
+
+    .opponent-badge {
+      flex: 1;
+      min-width: 0;
+      font-size: 11px;
+      color: #d4af37;
+      text-align: right;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Daily quests board */
+    .quest-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .quest-item {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      background: rgba(139, 107, 62, 0.12);
+      border: 1.5px solid #6b4e2e;
+      border-radius: 10px;
+      padding: 9px 10px;
+    }
+
+    .quest-item.done {
+      border-color: #72b043;
+      box-shadow: 0 0 12px rgba(114, 176, 67, 0.3);
+    }
+
+    .quest-item.claimed {
+      opacity: 0.6;
+    }
+
+    .quest-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .quest-name {
+      font-family: 'Cinzel', serif;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #f0d9a8;
+    }
+
+    .quest-reward {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #ffd700;
+      white-space: nowrap;
+    }
+
+    .quest-desc {
+      font-size: 11px;
+      color: #a38f78;
+      line-height: 1.3;
+    }
+
+    .quest-bar {
+      height: 8px;
+      background: #100a06;
+      border: 1px solid #4a3421;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .quest-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #8b6b3e 0%, #ffd700 100%);
+      transition: width 0.4s ease;
+    }
+
+    .quest-progress {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: #d4af37;
+    }
+
+    .quest-claim {
+      font-size: 11.5px;
+      padding: 9px 8px;
+    }
+
+    .quest-day {
+      font-size: 11px;
+      color: #a38f78;
+      text-align: center;
+      margin-top: -8px;
+    }
+
+    /* Toast notifications */
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      z-index: 200;
+      max-width: 88%;
+      padding: 9px 14px;
+      border-radius: 10px;
+      border: 2px solid #8b6b3e;
+      background: linear-gradient(180deg, #2c1b10 0%, #1a1009 100%);
+      color: #fceabb;
+      font-family: 'Cinzel', serif;
+      font-size: 12.5px;
+      text-align: center;
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.8);
+      opacity: 0;
+      transform: translateX(-50%) translateY(18px);
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      pointer-events: none;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* Pip positions grid mapping (:nth-of-type — в кубике теперь есть ::before/::after) */
+    .die[data-value="1"] .pip:nth-of-type(5) { display: block; }
+
+    .die[data-value="2"] .pip:nth-of-type(1),
+    .die[data-value="2"] .pip:nth-of-type(9) { display: block; }
+
+    .die[data-value="3"] .pip:nth-of-type(1),
+    .die[data-value="3"] .pip:nth-of-type(5),
+    .die[data-value="3"] .pip:nth-of-type(9) { display: block; }
+
+    .die[data-value="4"] .pip:nth-of-type(1),
+    .die[data-value="4"] .pip:nth-of-type(3),
+    .die[data-value="4"] .pip:nth-of-type(7),
+    .die[data-value="4"] .pip:nth-of-type(9) { display: block; }
+
+    .die[data-value="5"] .pip:nth-of-type(1),
+    .die[data-value="5"] .pip:nth-of-type(3),
+    .die[data-value="5"] .pip:nth-of-type(5),
+    .die[data-value="5"] .pip:nth-of-type(7),
+    .die[data-value="5"] .pip:nth-of-type(9) { display: block; }
+
+    .die[data-value="6"] .pip:nth-of-type(1),
+    .die[data-value="6"] .pip:nth-of-type(3),
+    .die[data-value="6"] .pip:nth-of-type(4),
+    .die[data-value="6"] .pip:nth-of-type(6),
+    .die[data-value="6"] .pip:nth-of-type(7),
+    .die[data-value="6"] .pip:nth-of-type(9) { display: block; }
+
+    /* Combo Banner & Feedback */
+    .combo-banner {
+      min-height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .combo-text {
+      font-family: 'Cinzel', serif;
+      font-weight: 700;
+      font-size: 14px;
+      color: #ffd700;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.9);
+      animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes popIn {
+      0% { transform: scale(0.7); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    /* Controls Bar */
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    .btn {
+      font-family: 'Cinzel', serif;
+      font-weight: 700;
+      font-size: 14px;
+      padding: 12px 8px;
+      border-radius: 10px;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border: 2px solid #8b6b3e;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(180deg, #8b1a1a 0%, #5a0000 100%);
+      color: #fff4d4;
+      border-color: #d4af37;
+    }
+
+    .btn-primary:not(:disabled):active {
+      transform: scale(0.96);
+      background: linear-gradient(180deg, #a82424 0%, #6e0000 100%);
+    }
+
+    .btn-secondary {
+      background: linear-gradient(180deg, #2e5a1c 0%, #17380b 100%);
+      color: #fff4d4;
+      border-color: #72b043;
+    }
+
+    .btn-secondary:not(:disabled):active {
+      transform: scale(0.96);
+      background: linear-gradient(180deg, #3a7024 0%, #1e470e 100%);
+    }
+
+    .btn-full {
+      grid-column: span 2;
+    }
+
+    .btn:disabled {
+      opacity: 0.4;
+      filter: grayscale(80%);
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    /* Modals */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-card {
+      background: linear-gradient(180deg, #2a1c12 0%, #180f09 100%);
+      border: 3px solid #8b6b3e;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 420px;
+      max-height: 85dvh;
+      overflow-y: auto;
+      padding: 18px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.9), inset 0 0 15px rgba(212, 175, 55, 0.15);
+      color: #fceabb;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .modal-title {
+      font-family: 'Cinzel', serif;
+      font-size: 20px;
+      font-weight: 900;
+      color: #ffd700;
+      text-align: center;
+      border-bottom: 1px solid #6b4e2e;
+      padding-bottom: 8px;
+    }
+
+    .rules-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .rules-table td, .rules-table th {
+      padding: 6px 8px;
+      border-bottom: 1px solid #3d2a1b;
+    }
+
+    .rules-table th {
+      color: #d4af37;
+      text-align: left;
+    }
+
+    .rules-table td:last-child {
+      text-align: right;
+      font-weight: bold;
+      color: #fff;
+    }
+
+    .prize-box {
+      background: rgba(139, 107, 62, 0.15);
+      border: 1px solid #8b6b3e;
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .prize-box h4 {
+      margin: 0 0 4px 0;
+      color: #ffd700;
+      font-family: 'Cinzel', serif;
+    }
+
+    /* Zonk Banner Overlay */
+    .zonk-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(139, 0, 0, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
+      z-index: 10;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+
+    .zonk-overlay.active {
+      opacity: 1;
+      animation: zonkShake 0.4s ease-in-out;
+    }
+
+    @keyframes zonkShake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-10px); }
+      40% { transform: translateX(10px); }
+      60% { transform: translateX(-6px); }
+      80% { transform: translateX(6px); }
+    }
+
+    .zonk-title {
+      font-family: 'Cinzel', serif;
+      font-size: 38px;
+      font-weight: 900;
+      color: #ff3333;
+      text-shadow: 0 0 20px #000, 0 0 10px #ff0000;
+      letter-spacing: 4px;
+    }
+
+    /* ==========================================================================
+       SCREEN SYSTEM (Таверна <-> Игровой стол)
+       ========================================================================== */
+    .screen {
+      display: none;
+      flex: 1;
+      min-height: 0;
+      flex-direction: column;
+      gap: 8px;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    .screen.active {
+      display: flex;
+      animation: screenFade 0.3s ease;
+    }
+
+    @keyframes screenFade {
+      0% { opacity: 0; transform: translateY(6px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Header: player / gold / sound */
+    .user-block {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .user-name {
+      font-family: 'Cinzel', serif;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #f0d9a8;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 140px;
+    }
+
+    .user-sub {
+      font-size: 10px;
+      color: #a38f78;
+      letter-spacing: 0.3px;
+    }
+
+    .gold-badge {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-family: 'Cinzel', serif;
+      font-weight: 700;
+      font-size: 14px;
+      color: #ffd700;
+      background: rgba(139, 107, 62, 0.25);
+      border: 1.5px solid #8b6b3e;
+      border-radius: 8px;
+      padding: 5px 9px;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+      white-space: nowrap;
+    }
+
+    .gold-badge.flash {
+      animation: goldFlash 0.55s ease;
+    }
+
+    @keyframes goldFlash {
+      0% { transform: scale(1); }
+      40% { transform: scale(1.18); color: #fff8d0; box-shadow: 0 0 14px rgba(255, 215, 0, 0.7); }
+      100% { transform: scale(1); }
+    }
+
+    /* Tavern screen */
+    .tavern-banner {
+      background: linear-gradient(180deg, rgba(58, 38, 22, 0.95) 0%, rgba(26, 16, 9, 0.95) 100%);
+      border: 2px solid #8b6b3e;
+      border-radius: 12px;
+      padding: 10px 12px;
+      text-align: center;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6), inset 0 0 18px rgba(212, 175, 55, 0.12);
+    }
+
+    .tavern-banner h1 {
+      margin: 0 0 3px 0;
+      font-family: 'Cinzel', serif;
+      font-size: 19px;
+      letter-spacing: 1px;
+      color: #ffd700;
+      text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+    }
+
+    .tavern-banner p {
+      margin: 0;
+      font-size: 11.5px;
+      font-style: italic;
+      color: #c4ab80;
+    }
+
+    /* ==========================================================================
+       ПРОГРЕССИЯ: «Обустройство двора» — живые слои сцены и игрового стола.
+       Классы upg-* висят на #app, слои включаются по мере покупки улучшений.
+       ========================================================================== */
+    .upg-candles-layer,
+    .upg-oak-layer,
+    .upg-cloth-layer {
+      display: none;
+    }
+
+    /* #1 «Сальные свечи и шандал»: яркие мерцающие свечи, ореол и искры */
+    #app.upg-candles .tavern-bg {
+      background:
+        radial-gradient(circle at 50% 22%, rgba(255, 184, 70, 0.34) 0%, rgba(15, 9, 6, 0.94) 72%),
+        radial-gradient(circle at 8% 80%, rgba(255, 158, 40, 0.22) 0%, transparent 55%),
+        radial-gradient(circle at 92% 80%, rgba(255, 158, 40, 0.22) 0%, transparent 55%),
+        repeating-linear-gradient(45deg, #1a0f08 0px, #1a0f08 10px, #150c06 10px, #150c06 20px);
+    }
+
+    #app.upg-candles .upg-candles-layer { display: block; }
+
+    #app.upg-candles .hall-scene {
+      border-color: #6b4a22;
+      box-shadow: inset 0 0 60px rgba(255, 170, 60, 0.22), inset 0 0 46px rgba(0, 0, 0, 0.85), 0 8px 22px rgba(0, 0, 0, 0.65);
+    }
+
+    #app.upg-candles .tavern-table {
+      border-color: #6b4a22;
+      box-shadow: inset 0 0 46px rgba(255, 170, 60, 0.28), inset 0 0 30px rgba(0, 0, 0, 0.85), 0 8px 24px rgba(0, 0, 0, 0.7);
+    }
+
+    .hall-candles, .hall-sparks, .table-candles {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .hall-candles { z-index: 4; }
+    .hall-sparks { z-index: 5; }
+    .table-candles { z-index: 2; }
+
+    .candle {
+      position: absolute;
+      width: 7px;
+      height: 22px;
+      border-radius: 3px 3px 1px 1px;
+      transform: scale(var(--sc, 1));
+      transform-origin: 50% 100%;
+      background: linear-gradient(180deg, #fbf0d4 0%, #e2d2a6 55%, #a9905c 100%);
+      box-shadow: inset -1px 0 2px rgba(0, 0, 0, 0.45), 0 0 10px rgba(255, 190, 80, 0.45);
+      pointer-events: none;
+    }
+
+    .candle .cup {
+      position: absolute;
+      left: -6px;
+      bottom: -4px;
+      width: 19px;
+      height: 5px;
+      border-radius: 0 0 7px 7px;
+      background: linear-gradient(180deg, #e0bb63 0%, #8a6a28 100%);
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.6);
+    }
+
+    .candle::before {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: -10px;
+      width: 9px;
+      height: 13px;
+      margin-left: -4.5px;
+      border-radius: 50% 50% 42% 42%;
+      background: radial-gradient(circle at 50% 66%, #fff8d4 0%, #ffcb55 46%, rgba(255, 122, 0, 0.35) 72%, transparent 80%);
+      animation: flameFlicker 1.15s ease-in-out infinite;
+      animation-delay: var(--cd, 0s);
+    }
+
+    .candle::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: -24px;
+      width: 62px;
+      height: 62px;
+      margin-left: -31px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255, 198, 92, 0.42) 0%, rgba(255, 160, 40, 0.16) 45%, transparent 70%);
+      animation: haloPulse 3.4s ease-in-out infinite;
+      animation-delay: var(--cd, 0s);
+    }
+
+    @keyframes flameFlicker {
+      0%, 100% { transform: scale(1) translateY(0); opacity: 1; }
+      35% { transform: scale(0.92, 1.12) translateY(-1px); opacity: 0.92; }
+      62% { transform: scale(1.06, 0.94) translateY(1px); opacity: 1; }
+      80% { transform: scale(0.96, 1.05) translateY(-1px); opacity: 0.86; }
+    }
+
+    @keyframes haloPulse {
+      0%, 100% { opacity: 0.55; transform: scale(0.95); }
+      50% { opacity: 0.95; transform: scale(1.08); }
+    }
+
+    .spark {
+      position: absolute;
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #fff5cc 0%, #ffb02e 60%, rgba(255, 140, 20, 0) 100%);
+      box-shadow: 0 0 6px rgba(255, 180, 60, 0.9);
+      animation: sparkRise 3.6s linear infinite;
+      animation-delay: var(--sd, 0s);
+      pointer-events: none;
+    }
+
+    @keyframes sparkRise {
+      0% { opacity: 0; transform: translateY(6px) scale(0.5); }
+      18% { opacity: 1; transform: translateY(-4px) scale(1); }
+      100% { opacity: 0; transform: translateY(-64px) scale(1.1); }
+    }
+
+    /* #2 «Дубовая стойка и бочонки»: резная дубовая рама с золотыми заклёпками */
+    #app.upg-oak .top-bar,
+    #app.upg-oak .tavern-banner,
+    #app.upg-oak .npc-plate,
+    #app.upg-oak .player-card {
+      border-color: #d4af37;
+      box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.35), 0 4px 12px rgba(0, 0, 0, 0.6);
+    }
+
+    #app.upg-oak .upg-oak-layer { display: block; }
+
+    .oak-frame {
+      position: absolute;
+      inset: 4px;
+      z-index: 8;
+      border-radius: 12px;
+      border: 4px solid rgba(154, 112, 54, 0.92);
+      box-shadow: inset 0 0 0 2px rgba(58, 36, 16, 0.95), 0 0 0 1px rgba(212, 175, 55, 0.55), inset 0 0 22px rgba(0, 0, 0, 0.5);
+      background: linear-gradient(180deg, rgba(120, 84, 40, 0.18) 0%, rgba(40, 24, 12, 0.22) 100%);
+      pointer-events: none;
+    }
+
+    .table-oak {
+      position: absolute;
+      inset: 3px;
+      z-index: 4;
+      border-radius: 13px;
+      border: 4px solid rgba(154, 112, 54, 0.9);
+      box-shadow: inset 0 0 0 2px rgba(58, 36, 16, 0.95), 0 0 0 1px rgba(212, 175, 55, 0.5);
+      pointer-events: none;
+    }
+
+    .oak-frame::before,
+    .oak-frame::after,
+    .table-oak::before,
+    .table-oak::after {
+      content: '';
+      position: absolute;
+      inset: 1px;
+      border-radius: 9px;
+      pointer-events: none;
+    }
+
+    .oak-frame::before, .table-oak::before {
+      background-image:
+        repeating-linear-gradient(90deg, rgba(255, 216, 115, 0) 0 11px, rgba(255, 216, 115, 0.95) 11px 16px, rgba(255, 216, 115, 0) 16px 28px),
+        repeating-linear-gradient(90deg, rgba(255, 216, 115, 0) 0 11px, rgba(255, 216, 115, 0.95) 11px 16px, rgba(255, 216, 115, 0) 16px 28px);
+      background-size: 100% 5px, 100% 5px;
+      background-position: 0 0, 0 100%;
+      background-repeat: no-repeat;
+    }
+
+    .oak-frame::after, .table-oak::after {
+      background-image:
+        repeating-linear-gradient(180deg, rgba(255, 216, 115, 0) 0 11px, rgba(255, 216, 115, 0.95) 11px 16px, rgba(255, 216, 115, 0) 16px 28px),
+        repeating-linear-gradient(180deg, rgba(255, 216, 115, 0) 0 11px, rgba(255, 216, 115, 0.95) 11px 16px, rgba(255, 216, 115, 0) 16px 28px);
+      background-size: 5px 100%, 5px 100%;
+      background-position: 0 0, 100% 0;
+      background-repeat: no-repeat;
+    }
+
+    /* #3 «Зелёное сукно и берестяной стакан»: изумрудное сукно с золотым кантом */
+    #app.upg-cloth .tavern-table {
+      background-color: #0d2a18;
+      background-image:
+        url('assets/bg-table.jpg'),
+        radial-gradient(ellipse at 50% 40%, rgba(38, 106, 62, 0.9) 0%, rgba(10, 40, 22, 0.96) 72%),
+        repeating-linear-gradient(45deg, #14401f 0px, #14401f 3px, #10351a 3px, #10351a 8px);
+      background-size: cover, cover, auto;
+      background-position: center, center, center;
+      border: 4px solid #d4af37;
+    }
+
+    #app.upg-cloth .upg-cloth-layer { display: block; }
+
+    #app.upg-cloth .kept-area {
+      border-color: #d4af37;
+      background: rgba(0, 0, 0, 0.32);
+    }
+
+    .table-cloth {
+      position: absolute;
+      left: 8%;
+      right: 8%;
+      top: 10%;
+      bottom: 10%;
+      z-index: -1;
+      border-radius: 16px;
+      background: radial-gradient(ellipse at 50% 42%, rgba(32, 108, 64, 0.95) 0%, rgba(13, 58, 34, 0.96) 68%, rgba(8, 38, 22, 0.98) 100%);
+      border: 2px solid rgba(212, 175, 55, 0.85);
+      box-shadow: inset 0 0 0 3px rgba(255, 222, 140, 0.22), inset 0 0 34px rgba(0, 0, 0, 0.72), 0 6px 18px rgba(0, 0, 0, 0.6);
+      pointer-events: none;
+    }
+
+    .table-cloth::before {
+      content: '';
+      position: absolute;
+      inset: 7px;
+      border-radius: 12px;
+      border: 1px dashed rgba(255, 222, 140, 0.45);
+    }
+
+    .table-cup {
+      position: absolute;
+      right: 10px;
+      bottom: 8px;
+      width: 34px;
+      height: 38px;
+      opacity: 0.92;
+      filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.6));
+    }
+
+    .table-cup svg { display: block; width: 100%; height: 100%; }
+
+    /* #4 «Уездная грамота и герб»: герб над названием и корона у имени игрока */
+    .user-line {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      min-width: 0;
+    }
+
+    .name-crown {
+      display: none;
+      font-size: 11px;
+      line-height: 1;
+    }
+
+    #app.upg-crest .name-crown {
+      display: inline-block;
+      animation: crownShine 2.8s ease-in-out infinite;
+    }
+
+    @keyframes crownShine {
+      0%, 100% { filter: drop-shadow(0 0 3px rgba(255, 215, 0, 0.5)); }
+      50% { filter: drop-shadow(0 0 9px rgba(255, 215, 0, 0.95)); }
+    }
+
+    .tavern-crest {
+      display: none;
+      width: 40px;
+      height: 46px;
+      margin: 0 auto 3px;
+      filter: drop-shadow(0 0 10px rgba(255, 205, 80, 0.5));
+      animation: crestFloat 3.6s ease-in-out infinite;
+    }
+
+    .tavern-crest svg { display: block; width: 100%; height: 100%; }
+    #app.upg-crest .tavern-crest { display: block; }
+
+    @keyframes crestFloat {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-2px) scale(1.04); }
+    }
+
+    .user-title {
+      display: none;
+      font-size: 9.5px;
+      letter-spacing: 0.4px;
+      color: #a38f78;
+    }
+
+    #app.upg-crest .user-title {
+      display: block;
+      color: #ffd700;
+      text-shadow: 0 0 8px rgba(255, 215, 0, 0.65);
+    }
+
+    .season-badge {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      margin-top: 6px;
+      padding: 3px 8px;
+      border-radius: 8px;
+      border: 1.5px solid #ffd700;
+      background: linear-gradient(180deg, rgba(212, 175, 55, 0.28) 0%, rgba(139, 107, 62, 0.18) 100%);
+      color: #ffe9a8;
+      font-family: 'Cinzel', serif;
+      font-size: 10px;
+      letter-spacing: 0.5px;
+    }
+
+    #app.upg-crest .season-badge {
+      display: flex;
+    }
+
+    /* Карточки покупок: обустройство двора и лавка костей */
+    .shop-note {
+      font-size: 11px;
+      color: #a38f78;
+      text-align: center;
+      margin-top: -6px;
+    }
+
+    .shop-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .shop-item {
+      display: flex;
+      gap: 9px;
+      align-items: center;
+      background: rgba(139, 107, 62, 0.12);
+      border: 1.5px solid #6b4e2e;
+      border-radius: 10px;
+      padding: 9px 10px;
+    }
+
+    .shop-item.done {
+      border-color: #72b043;
+    }
+
+    .shop-item.equipped {
+      border-color: #ffd700;
+      box-shadow: 0 0 12px rgba(255, 215, 0, 0.28);
+    }
+
+    .shop-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .shop-name {
+      font-family: 'Cinzel', serif;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #f0d9a8;
+    }
+
+    .shop-desc {
+      font-size: 10.5px;
+      color: #a38f78;
+      line-height: 1.3;
+      margin-top: 2px;
+    }
+
+    .shop-desc .tag-ok {
+      color: #8fae74;
+      font-weight: 700;
+    }
+
+    .shop-cost {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #ffd700;
+      margin-top: 3px;
+    }
+
+    .shop-btn {
+      font-family: 'Cinzel', serif;
+      font-size: 10.5px;
+      font-weight: 700;
+      padding: 8px 9px;
+      border-radius: 8px;
+      border: 1.5px solid #8b6b3e;
+      background: linear-gradient(180deg, #33231a 0%, #1c1107 100%);
+      color: #e6c885;
+      cursor: pointer;
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+
+    .shop-btn.buy {
+      background: linear-gradient(180deg, #8b1a1a 0%, #5a0000 100%);
+      border-color: #d4af37;
+      color: #fff4d4;
+    }
+
+    .shop-btn.equip {
+      background: linear-gradient(180deg, #2e5a1c 0%, #17380b 100%);
+      border-color: #72b043;
+      color: #fff4d4;
+    }
+
+    .shop-btn:disabled {
+      opacity: 0.4;
+      filter: grayscale(80%);
+      cursor: not-allowed;
+    }
+
+    .shop-btn:not(:disabled):active {
+      transform: scale(0.95);
+    }
+
+    /* Мини-превью набора костей */
+    .dice-set-row {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .dice-preview {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      border: 2px solid #bfb397;
+      box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.7), 0 2px 6px rgba(0, 0, 0, 0.5);
+    }
+
+    .preview-ordinary { background: linear-gradient(145deg, #ffffff 0%, #d8cfb8 100%); }
+    .preview-odd { background: linear-gradient(145deg, #7a6f5c 0%, #2a251e 100%); border-color: #a1907a; }
+    .preview-merchant { background: linear-gradient(145deg, #fff4c8 0%, #c9a227 100%); border-color: #ffd700; }
+    .preview-wolf { background: linear-gradient(145deg, #7d2320 0%, #2a0d0d 100%); border-color: #d08a2a; }
+
+    /* Особые кости игрока на столе */
+    .die.special-odd {
+      background: linear-gradient(145deg, #7a6f5c 0%, #4a4234 70%, #2a251e 100%);
+      border-color: #a1907a;
+    }
+
+    .die.special-merchant {
+      background: linear-gradient(145deg, #fff4c8 0%, #f0d178 70%, #c9a227 100%);
+      border-color: #ffd700;
+    }
+
+    .die.special-wolf {
+      background: linear-gradient(145deg, #7d2320 0%, #4a1210 70%, #2a0d0d 100%);
+      border-color: #d08a2a;
+    }
+
+    .die.special-odd .pip {
+      background: radial-gradient(circle at 35% 35%, #ffe9a8 0%, #b8860b 100%);
+    }
+
+    .die.special-wolf .pip {
+      background: radial-gradient(circle at 35% 35%, #ffe9a8 0%, #b8860b 100%);
+    }
+
+    .die.special-merchant .pip {
+      background: radial-gradient(circle at 35% 35%, #900000 0%, #500000 100%);
+    }
+
+    .die.selected.special-odd,
+    .die.selected.special-merchant,
+    .die.selected.special-wolf {
+      border-color: #ffd700;
+      box-shadow: 0 0 18px rgba(255, 215, 0, 0.85), 0 6px 12px rgba(0, 0, 0, 0.5);
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="tavern-bg"></div>
+  <div class="tavern-vignette"></div>
+
+  <div id="app" class="app">
+    <!-- Top Bar: Player / Gold / Sound -->
+    <header class="top-bar">
+      <div class="user-block">
+        <span class="user-line">
+          <span class="name-crown" aria-hidden="true">👑</span>
+          <span class="user-name" id="headerPlayerName">Путник</span>
+        </span>
+        <span class="user-title" id="userTitle">👑 Хозяин двора</span>
+        <span class="user-sub" id="userSub">Победы: 0</span>
+      </div>
+      <div class="gold-badge" id="goldBadge" title="Гроши">
+        <span>🪙</span><span id="goldValue">100</span>
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn" id="muteBtn" title="Звук">🔊</button>
+      </div>
+    </header>
+
+    <!-- ========================== TAVERN SCREEN ========================== -->
+    <section id="tavernScreen" class="screen active">
+      <div class="tavern-banner">
+        <div class="tavern-crest" aria-hidden="true">
+          <svg viewBox="0 0 64 72">
+            <defs>
+              <linearGradient id="crestGold" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#fff2c4"/>
+                <stop offset="0.45" stop-color="#e0bc4e"/>
+                <stop offset="1" stop-color="#8a6a28"/>
+              </linearGradient>
+            </defs>
+            <path d="M32 3 60 12v26c0 16-12 26-28 32C16 64 4 54 4 38V12z" fill="url(#crestGold)" stroke="#5a4318" stroke-width="2"/>
+            <path d="M32 9 54 16v21c0 13-9 21-22 26C19 58 10 50 10 37V16z" fill="none" stroke="#7a5a1e" stroke-width="1.4"/>
+            <circle cx="32" cy="32" r="8" fill="#fff2c4" stroke="#8a6a28" stroke-width="1.6"/>
+            <text x="32" y="36.5" text-anchor="middle" font-family="Cinzel, serif" font-size="10" font-weight="700" fill="#5a4318">III</text>
+            <circle cx="19" cy="49" r="5" fill="#fff6da" stroke="#8a6a28" stroke-width="1.2"/>
+            <circle cx="45" cy="49" r="5" fill="#fff6da" stroke="#8a6a28" stroke-width="1.2"/>
+          </svg>
+        </div>
+        <h1>Постоялый двор «Три Гроша»</h1>
+        <p>«Садись, путник. Кости расскажут, кто нынче тут хозяин…»</p>
+        <div class="season-badge" id="seasonBadge">🎟️ Пропуск в Сезон 2: ОТКРЫТ</div>
+      </div>
+
+      <!-- Живая сцена зала: соперники сидят на своих местах -->
+      <div class="hall-scene" id="hallScene">
+        <div class="hall-veil"></div>
+        <div class="hall-glow"></div>
+        <div class="hall-fire"></div>
+        <div class="hall-dark-corner"></div>
+
+        <div class="hall-prop hall-counter" aria-hidden="true"></div>
+        <div class="hall-prop hall-barrel" aria-hidden="true"></div>
+        <div class="hall-prop hall-bench" aria-hidden="true"></div>
+
+        <div class="hall-candles upg-candles-layer" id="hallCandles" aria-hidden="true"></div>
+        <div class="hall-sparks upg-candles-layer" id="hallSparks" aria-hidden="true"></div>
+        <div class="oak-frame upg-oak-layer" aria-hidden="true"></div>
+
+        <div class="npc-layer" id="npcLayer"></div>
+        <div class="npc-scroll" id="npcScroll"></div>
+
+        <div class="hall-hint" id="hallHint">Выберите соперника в зале</div>
+      </div>
+
+      <div class="tavern-menu">
+        <button class="btn btn-secondary" id="questsBtn" title="Ежедневные задания">
+          📜 Объявления
+          <span class="dot-badge" id="questBadge">0</span>
+        </button>
+        <button class="btn btn-primary" id="rulesBtnTavern" title="Правила игры">❓ Правила</button>
+        <button class="btn btn-secondary" id="upgradeBtn" title="Обустройство постоялого двора">🏠 Обустройство (0/4)</button>
+        <button class="btn btn-primary" id="diceShopBtn" title="Лавка особых костей">🎲 Кости</button>
+      </div>
+
+      <button class="btn btn-secondary beg-btn" id="begBtn" style="display: none;">
+        🙏 Попросить милостыню (+20 грошей)
+      </button>
+    </section>
+
+    <!-- =========================== TABLE SCREEN =========================== -->
+    <section id="gameScreen" class="screen">
+      <div class="table-nav">
+        <button class="btn-ghost" id="backToTavernBtn">← В таверну</button>
+        <span class="opponent-badge" id="opponentBadge">Соперник · ставка 0</span>
+      </div>
+
+      <div class="speech-bubble" id="speechBubble"></div>
+
+    <!-- Scoreboard -->
+    <section class="scoreboard">
+      <!-- Player Card -->
+      <div class="player-card active-turn" id="playerCard">
+        <div class="player-header">
+          <span class="player-name" id="playerName">Игрок</span>
+          <span class="turn-badge">Ваш ход</span>
+        </div>
+        <div class="score-main"><span id="playerTotalScore">0</span> <span class="score-target">/ 2000</span></div>
+        <div class="progress-bar-container">
+          <div class="progress-fill" id="playerProgress"></div>
+        </div>
+        <div class="turn-score-label">
+          <span>В ходе:</span>
+          <strong id="playerTurnScore">0</strong>
+        </div>
+      </div>
+
+      <div class="vs-emblem">VS</div>
+
+      <!-- Innkeeper Card -->
+      <div class="player-card" id="aiCard">
+        <div class="player-header">
+          <span class="player-name" id="aiName">Соперник</span>
+          <span class="turn-badge">Ход ИИ</span>
+        </div>
+        <div class="score-main"><span id="aiTotalScore">0</span> <span class="score-target">/ 2000</span></div>
+        <div class="progress-bar-container">
+          <div class="progress-fill" id="aiProgress"></div>
+        </div>
+        <div class="turn-score-label">
+          <span>В ходе:</span>
+          <strong id="aiTurnScore">0</strong>
+        </div>
+      </div>
+    </section>
+
+    <!-- AI Status Message -->
+    <div class="ai-status" id="aiStatusText">Ваш ход! Бросьте кости.</div>
+
+    <!-- Main Tavern Table -->
+    <main class="tavern-table" id="tableSurface">
+      <!-- Слои «Обустройства»: изумрудное сукно, свечи и дубовая рама стола -->
+      <div class="table-cloth upg-cloth-layer" aria-hidden="true">
+        <span class="table-cup">
+          <svg viewBox="0 0 40 46">
+            <defs>
+              <linearGradient id="cupBark" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#efdcb0"/>
+                <stop offset="0.55" stop-color="#d3b483"/>
+                <stop offset="1" stop-color="#8d6f40"/>
+              </linearGradient>
+            </defs>
+            <circle cx="14" cy="7" r="6.5" fill="#f7f0dc" stroke="#a67c48" stroke-width="1.3"/>
+            <circle cx="14" cy="7" r="1.4" fill="#8b0000"/>
+            <circle cx="17" cy="5" r="1.4" fill="#8b0000"/>
+            <circle cx="11" cy="9" r="1.4" fill="#8b0000"/>
+            <path d="M8 15h24l-3.6 24a4 4 0 0 1-4 3.4H15.6a4 4 0 0 1-4-3.4z" fill="url(#cupBark)" stroke="#6b4e2e" stroke-width="1.5"/>
+            <ellipse cx="20" cy="15" rx="12" ry="4" fill="#3b2a17" stroke="#8b6b3e" stroke-width="1.4"/>
+            <ellipse cx="20" cy="15" rx="8.5" ry="2.4" fill="#140d07"/>
+          </svg>
+        </span>
+      </div>
+      <div class="table-candles upg-candles-layer" id="tableCandles" aria-hidden="true"></div>
+      <div class="table-oak upg-oak-layer" aria-hidden="true"></div>
+
+      <div class="zonk-overlay" id="zonkOverlay">
+        <div class="zonk-title">ЗОНК!</div>
+      </div>
+
+      <!-- Rolled Dice Zone -->
+      <div>
+        <div class="table-section-title">Кости на столе</div>
+        <div class="dice-area" id="rolledDiceArea"></div>
+      </div>
+
+      <!-- Turn Combination Feedback -->
+      <div class="combo-banner">
+        <div class="combo-text" id="comboText">Нажмите «Бросить кости»</div>
+      </div>
+
+      <!-- Kept/Selected Dice Zone -->
+      <div class="kept-area">
+        <div class="table-section-title" style="margin-bottom: 6px;">Отложенные кости текущего хода</div>
+        <div class="dice-area" id="keptDiceArea"></div>
+      </div>
+    </main>
+
+    <!-- Controls Bar -->
+    <footer class="controls">
+      <button class="btn btn-primary" id="rollBtn">🎲 Бросить</button>
+      <button class="btn btn-secondary" id="bankBtn" disabled>💰 В банк</button>
+    </footer>
+    </section>
+  </div>
+
+  <!-- Toast notifications -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Rules & Prizes Modal -->
+  <div class="modal-overlay" id="rulesModal">
+    <div class="modal-card">
+      <div class="modal-title">📜 Правила & Награды</div>
+      
+      <p style="font-size: 13px; line-height: 1.4; margin: 0;">
+        Цель партии — первым набрать <strong>2000 очков</strong> против выбранного соперника.
+      </p>
+
+      <div class="prize-box">
+        <h4>🪙 Ставки и гроши</h4>
+        <p style="margin:0;">
+          Перед партией ставка списывается с кошеля. Победа приносит <strong>двойную ставку</strong>,
+          поражение — ставка остаётся сопернику. Стартовый капитал: <strong>100 грошей</strong>.
+          Ушли посреди партии — ставка сгорает.
+        </p>
+      </div>
+
+      <div class="prize-box">
+        <h4>📜 Ежедневные задания</h4>
+        <p style="margin:0;">
+          Загляните на «Доску объявлений»: три задания обновляются каждый день, за них платят грошами.
+          Если кошель почти пуст — попросите милостыню в таверне.
+        </p>
+      </div>
+
+      <div class="prize-box">
+        <h4>🏠 Обустройство и Лавка костей</h4>
+        <p style="margin:0;">
+          Гроши идут не только на ставки: «Обустройство» меняет облик двора (4 улучшения покупаются по порядку),
+          а «Лавка костей» продаёт особые кости. В набор входит до <strong>3 особых костей</strong> —
+          в партии их выдаёт цвет и рамка.<br>
+          Соперники сидят в зале: коснитесь медальона, чтобы услышать реплику, и коснитесь снова —
+          чтобы сесть с ним за стол.
+        </p>
+      </div>
+
+      <div style="font-weight: bold; color: #d4af37; font-size: 14px;">Комбинации очков:</div>
+      <table class="rules-table">
+        <tr><th>Комбинация</th><th>Очки</th></tr>
+        <tr><td>Каждая «1»</td><td>100</td></tr>
+        <tr><td>Каждая «5»</td><td>50</td></tr>
+        <tr><td>Три единицы (1-1-1)</td><td>1000</td></tr>
+        <tr><td>Три 2/3/4/5/6</td><td>100 × Значение (5=500)</td></tr>
+        <tr><td>Четыре одинаковых</td><td>1000</td></tr>
+        <tr><td>Пять одинаковых</td><td>2000</td></tr>
+        <tr><td>Шесть одинаковых</td><td>3000</td></tr>
+        <tr><td>Стрит (1-2-3-4-5-6)</td><td>1500</td></tr>
+        <tr><td>3 пары (напр. 2-2, 4-4, 6-6)</td><td>750</td></tr>
+      </table>
+
+      <p style="font-size: 12px; color: #a38f78; margin: 0;">
+        🔥 <strong>Горячие кости:</strong> Если вы отложили все 6 кубиков, вы бросаете все 6 снова, сохраняя набранные очки!
+        <br>⚡ <strong>Зонк:</strong> Если при броске не выпало ни одной призовой комбинации, все очки за текущий ход сгорают.
+      </p>
+
+      <button class="btn btn-primary btn-full" id="closeRulesBtn">Понятно</button>
+    </div>
+  </div>
+
+  <!-- Daily Quests Modal (Доска объявлений) -->
+  <div class="modal-overlay" id="questsModal">
+    <div class="modal-card">
+      <div class="modal-title">📜 Доска объявлений</div>
+      <div class="quest-day" id="questDayLabel">Задания на сегодня</div>
+      <div class="quest-list" id="questList"></div>
+      <button class="btn btn-primary btn-full" id="closeQuestsBtn">Закрыть</button>
+    </div>
+  </div>
+
+  <!-- Upgrade Modal (Обустройство постоялого двора) -->
+  <div class="modal-overlay" id="upgradeModal">
+    <div class="modal-card">
+      <div class="modal-title">🏠 Обустройство двора</div>
+      <div class="shop-note" id="upgradeNote">Улучшения покупаются по порядку за гроши и остаются навсегда.</div>
+      <div class="shop-list" id="upgradeList"></div>
+      <button class="btn btn-primary btn-full" id="closeUpgradeBtn">Закрыть</button>
+    </div>
+  </div>
+
+  <!-- Dice Shop Modal (Лавка особых костей) -->
+  <div class="modal-overlay" id="diceShopModal">
+    <div class="modal-card">
+      <div class="modal-title">🎲 Лавка костей</div>
+      <div class="shop-note" id="diceShopNote">Особых костей в наборе: 0 / 3</div>
+      <div class="dice-set-row" id="diceSetRow"></div>
+      <div class="shop-list" id="diceShopList"></div>
+      <button class="btn btn-primary btn-full" id="closeDiceShopBtn">Закрыть</button>
+    </div>
+  </div>
+
+  <!-- Confirm Modal (предупреждение о сгоревшей ставке) -->
+  <div class="modal-overlay" id="confirmModal">
+    <div class="modal-card" style="text-align: center;">
+      <div class="modal-title" id="confirmTitle">Внимание</div>
+      <div id="confirmText" style="font-size: 13.5px; line-height: 1.5;"></div>
+      <button class="btn btn-primary btn-full" id="confirmOkBtn">Да</button>
+      <button class="btn btn-secondary btn-full" id="confirmCancelBtn">Отмена</button>
+    </div>
+  </div>
+
+  <!-- Game Over Modal -->
+  <div class="modal-overlay" id="gameOverModal">
+    <div class="modal-card" style="text-align: center;">
+      <div class="modal-title" id="gameOverTitle">ПОБЕДА!</div>
+      <div id="gameOverMessage" style="font-size: 14px; line-height: 1.5;"></div>
+      <div class="prize-box" id="gameOverPurse"></div>
+      <button class="btn btn-primary btn-full" id="rematchBtn">↻ Реванш</button>
+      <button class="btn btn-secondary btn-full" id="toTavernBtn">← В таверну</button>
+    </div>
+  </div>
+
+  <script>
+    /* ==========================================================================
+       1. Audio Synthesizer (Web Audio API)
+       ========================================================================== */
+    class SoundManager {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+      }
+      init() {
+        if (!this.ctx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) this.ctx = new AudioCtx();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+      toggleMute() {
+        this.muted = !this.muted;
+        return this.muted;
+      }
+      playRoll() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        for (let i = 0; i < 5; i++) {
+          const time = now + i * 0.06 + Math.random() * 0.02;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          const filter = this.ctx.createBiquadFilter();
+
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(160 + Math.random() * 180, time);
+          osc.frequency.exponentialRampToValueAtTime(35, time + 0.05);
+
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(700 + Math.random() * 400, time);
+
+          gain.gain.setValueAtTime(0.35, time);
+          gain.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
+
+          osc.connect(filter);
+          filter.connect(this.ctx.destination);
+
+          osc.start(time);
+          osc.stop(time + 0.06);
+        }
+      }
+      playSelect() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(550, now);
+        osc.frequency.exponentialRampToValueAtTime(220, now + 0.05);
+
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.06);
+      }
+      playBank() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        [2000, 2600, 3200].forEach((freq, idx) => {
+          const time = now + idx * 0.05;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, time);
+          osc.frequency.exponentialRampToValueAtTime(freq * 0.85, time + 0.12);
+
+          gain.gain.setValueAtTime(0.25, time);
+          gain.gain.exponentialRampToValueAtTime(0.001, time + 0.12);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc.start(time);
+          osc.stop(time + 0.14);
+        });
+      }
+      playZonk() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(240, now);
+        osc.frequency.linearRampToValueAtTime(80, now + 0.4);
+
+        gain.gain.setValueAtTime(0.4, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.45);
+      }
+      playCoin() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        [1760, 2093, 2637, 3136].forEach((freq, idx) => {
+          const time = now + idx * 0.055;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, time);
+          osc.frequency.exponentialRampToValueAtTime(freq * 0.92, time + 0.14);
+
+          gain.gain.setValueAtTime(0.0001, time);
+          gain.gain.exponentialRampToValueAtTime(0.22, time + 0.01);
+          gain.gain.exponentialRampToValueAtTime(0.001, time + 0.16);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc.start(time);
+          osc.stop(time + 0.18);
+        });
+      }
+    }
+
+    const soundManager = new SoundManager();
+
+    /* ==========================================================================
+       2. Telegram WebApp Integration & Haptic Feedback
+       ========================================================================== */
+    const tg = window.Telegram?.WebApp;
+    if (tg) {
+      try {
+        tg.expand();
+        tg.ready();
+      } catch (e) {}
+    }
+
+    function triggerHaptic(type = 'impact', style = 'medium') {
+      if (tg?.HapticFeedback) {
+        if (type === 'impact') {
+          tg.HapticFeedback.impactOccurred(style);
+        } else if (type === 'notification') {
+          tg.HapticFeedback.notificationOccurred(style);
+        }
+      }
+    }
+
+    // --- Player identity -------------------------------------------------------
+    const playerName = tg?.initDataUnsafe?.user?.first_name
+      || tg?.initDataUnsafe?.user?.username
+      || 'Путник';
+
+    /* ==========================================================================
+       2b. Economy: гроши, победы, кошель (localStorage)
+       ========================================================================== */
+    const STORAGE_KEYS = {
+      gold: 'zonk_gold',
+      wins: 'zonk_wins',
+      quests: 'zonk_daily_quests',
+      upgrades: 'zonk_upgrades',
+      diceOwned: 'zonk_dice_owned',
+      diceEquipped: 'zonk_dice_equipped'
+    };
+    const START_GOLD = 100;
+
+    let gold = parseInt(localStorage.getItem(STORAGE_KEYS.gold), 10);
+    if (!Number.isFinite(gold)) {
+      gold = START_GOLD;
+      localStorage.setItem(STORAGE_KEYS.gold, String(gold));
+    }
+
+    let winsCount = parseInt(localStorage.getItem(STORAGE_KEYS.wins) || '0', 10) || 0;
+
+    function flashGold() {
+      const badge = document.getElementById('goldBadge');
+      badge.classList.remove('flash');
+      void badge.offsetWidth;
+      badge.classList.add('flash');
+    }
+
+    function updateHeader() {
+      document.getElementById('headerPlayerName').textContent = playerName;
+      document.getElementById('userSub').textContent = `Победы: ${winsCount}`;
+      document.getElementById('goldValue').textContent = gold;
+      document.getElementById('playerName').textContent = playerName;
+    }
+
+    function addGold(amount, withSound = false) {
+      gold = Math.max(0, gold + amount);
+      localStorage.setItem(STORAGE_KEYS.gold, String(gold));
+      updateHeader();
+
+      if (withSound && amount > 0) {
+        soundManager.playCoin();
+        flashGold();
+      }
+
+      if (document.getElementById('tavernScreen').classList.contains('active')) {
+        renderTavern();
+      }
+
+      // Открытые лавки и обустройство пересчитывают цены и доступность
+      if (document.getElementById('upgradeModal').classList.contains('active')) renderUpgrades();
+      if (document.getElementById('diceShopModal').classList.contains('active')) renderDiceShop();
+    }
+
+    /* ==========================================================================
+       2c. Opponents: 4 соперника со ставками, репликами и стилем ИИ
+       ========================================================================== */
+    const OPPONENTS = [
+      {
+        id: 'sivka',
+        name: 'Сивка',
+        fullName: 'Конюх Сивка',
+        title: 'Крылатый конюх',
+        avatar: '🐴',
+        photo: 'assets/npc-sivka.jpg',
+        bet: 10,
+        styleType: 'reckless',
+        joke: [
+          'Крыша сарая худая, зато кости с высоты виднее!',
+          'Пока мерин жуёт, я на крышу — и оттуда кидаю.',
+          'Мне бы дров наколоть, а я тут гроши собираю…'
+        ],
+        svg: `<svg viewBox="0 0 64 64" aria-hidden="true">
+          <defs>
+            <radialGradient id="svs-bg" cx="50%" cy="30%" r="78%">
+              <stop offset="0" stop-color="#6b4a26"/><stop offset="1" stop-color="#1a1009"/>
+            </radialGradient>
+            <linearGradient id="svs-hat" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#f2dc9f"/><stop offset="1" stop-color="#b98f43"/>
+            </linearGradient>
+          </defs>
+          <rect width="64" height="64" fill="url(#svs-bg)"/>
+          <path d="M6 64c2-13 12-19 26-19s24 6 26 19z" fill="#3f5d2a"/>
+          <path d="M6 64c2-13 12-19 26-19s24 6 26 19z" fill="none" stroke="#8fae74" stroke-width="1"/>
+          <circle cx="32" cy="29" r="12" fill="#e6c79a"/>
+          <path d="M19 25c1-9 6-13 13-13s12 4 13 13c-3-4-8-5-13-5s-10 1-13 5z" fill="#6b4223"/>
+          <path d="M22 18c1-7 5-10 10-10s9 3 10 10z" fill="url(#svs-hat)"/>
+          <ellipse cx="32" cy="19" rx="18" ry="4.2" fill="url(#svs-hat)"/>
+          <circle cx="27" cy="30" r="1.7" fill="#3b2415"/>
+          <circle cx="37" cy="30" r="1.7" fill="#3b2415"/>
+          <path d="M27 36c3 2 7 2 10 0" stroke="#3b2415" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+          <path d="M26 53c0-4 2.6-6.5 6-6.5s6 2.5 6 6.5" fill="none" stroke="#e0bc4e" stroke-width="2.2" stroke-linecap="round"/>
+        </svg>`,
+        style: 'Безрассудный: бросает, пока не наберёт 500+ очков за ход',
+        lines: {
+          start: ['Опять на крышу сарая залез — оттуда и кидаю наугад!', 'С крыши-то всё видно, потому и кидаю как придётся!'],
+          luck: ['Гляди, с крыши и кости виднее!', 'Ох ты, свезло, ровно ветру в поле!'],
+          risky: ['Сарай не сарай, а кидаю ещё!', 'Наугад, да с размаху!'],
+          bank: ['Пора слезать — своё забираю.', 'Вниз, вниз, покуда кости целы!'],
+          zonk: ['Кувырк с крыши — и пусто!', 'Опять я на земле, а кости мимо.'],
+          win: ['Вот так с крыши — и все твои гроши!', 'Сивка с высоты всех обглядел!'],
+          lose: ['Ну и ладно, залезу на крышу снова.', 'Ох, слезать придётся пустым.']
+        }
+      },
+      {
+        id: 'ignat',
+        name: 'Игнат',
+        fullName: 'Голодный Игнат',
+        title: 'Сын кузнеца',
+        avatar: '🍲',
+        photo: 'assets/npc-ignat.jpg',
+        bet: 30,
+        styleType: 'balanced',
+        joke: [
+          'В животе урчит так, что кости подпрыгивают!',
+          'Щи дадут — и я добрый. Не дадут — тоже добрый, но злой.',
+          'Кузнец я или нет? Кую удачу, а она не куётся…'
+        ],
+        svg: `<svg viewBox="0 0 64 64" aria-hidden="true">
+          <defs>
+            <radialGradient id="ign-bg" cx="50%" cy="30%" r="78%">
+              <stop offset="0" stop-color="#5c4a2a"/><stop offset="1" stop-color="#150e09"/>
+            </radialGradient>
+          </defs>
+          <rect width="64" height="64" fill="url(#ign-bg)"/>
+          <path d="M7 64c2-13 12-19 25-19s23 6 25 19z" fill="#6d6157"/>
+          <path d="M20 46h24l-2 18H22z" fill="#8a7a68" opacity="0.85"/>
+          <circle cx="32" cy="30" r="12" fill="#e8cda4"/>
+          <path d="M20 26c1-9 6-13 12-13s11 4 12 13c-3-4-7-5-12-5s-9 1-12 5z" fill="#2f2419"/>
+          <circle cx="27" cy="31" r="1.7" fill="#2f2419"/>
+          <circle cx="37" cy="31" r="1.7" fill="#2f2419"/>
+          <path d="M27 37c3 2 7 2 10 0" stroke="#2f2419" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+          <path d="M44 13h14l-1.6 9.4a5.6 5.6 0 0 1-10.8 0z" fill="#4b4b52" stroke="#2a2a30" stroke-width="1.2"/>
+          <path d="M42.5 13h17" stroke="#9aa0a8" stroke-width="2.2" stroke-linecap="round"/>
+        </svg>`,
+        style: 'Уравновешенный: забирает банк от 300–350 очков',
+        lines: {
+          start: ['В животе урчит, а ну как щи накидаются?', 'Сыграем, а после — миска густых щей.'],
+          luck: ['Ишь, прёт — глядишь, и до щей доживу!', 'Ещё чуток, и на щи хватит!'],
+          risky: ['Живот не терпит, кидаю!', 'Щи сами себя не наварят!'],
+          bank: ['Всё, на щи хватит, забираю.', 'Хватит рисковать — есть охота.'],
+          zonk: ['Урчит пуще прежнего — а пусто!', 'Ни щей, ни очков…'],
+          win: ['Эх, наварю теперь густых щей!', 'Сын кузнеца и голоден, и при грошах!'],
+          lose: ['Ладно, и без щей потерплю.', 'Брюхо подвело, да не беда.']
+        }
+      },
+      {
+        id: 'yashka',
+        name: 'Яшка',
+        fullName: 'Гусельник Яшка',
+        title: 'Уездный балагур',
+        avatar: '🪕',
+        photo: 'assets/npc-yashka.jpg',
+        bet: 80,
+        styleType: 'cautious',
+        joke: [
+          'Гусли врут, но кости врут красивее!',
+          'Про тебя спою — да так, что весь уезд поверит.',
+          'Монетку кинешь? А я про тебя потешку сложу.'
+        ],
+        svg: `<svg viewBox="0 0 64 64" aria-hidden="true">
+          <defs>
+            <radialGradient id="yas-bg" cx="50%" cy="30%" r="78%">
+              <stop offset="0" stop-color="#4a3a5e"/><stop offset="1" stop-color="#150e14"/>
+            </radialGradient>
+            <linearGradient id="yas-gus" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#ffe9a8"/><stop offset="1" stop-color="#b8860b"/>
+            </linearGradient>
+          </defs>
+          <rect width="64" height="64" fill="url(#yas-bg)"/>
+          <path d="M7 64c2-13 12-19 25-19s23 6 25 19z" fill="#6a2f3a"/>
+          <circle cx="32" cy="29" r="12" fill="#eccfa8"/>
+          <path d="M20 27c0-9 5-14 12-14s12 5 12 14c-3-5-7-6-12-6s-9 1-12 6z" fill="#4a3520"/>
+          <path d="M14 21c6-2 12-1 18 1 6-2 12-3 18-1l-2-6c-6-2-11-1-16 1-5-2-10-3-16-1z" fill="#3a2a1a"/>
+          <circle cx="27" cy="30" r="1.7" fill="#3b2415"/>
+          <circle cx="37" cy="30" r="1.7" fill="#3b2415"/>
+          <path d="M24 34c3-2 5-2 8 0 3-2 5-2 8 0" fill="none" stroke="#5a4026" stroke-width="1.9" stroke-linecap="round"/>
+          <path d="M12 47c8-6 32-6 40 0l-4 9c-8-4-24-4-32 0z" fill="url(#yas-gus)" stroke="#7a5a1e" stroke-width="1.3"/>
+          <path d="M16 49h32" stroke="#7a5a1e" stroke-width="1"/>
+          <path d="M17 53h30" stroke="#7a5a1e" stroke-width="1"/>
+        </svg>`,
+        style: 'Осторожный тактик: рискует, только когда отстаёт по очкам',
+        lines: {
+          start: ['Гусляр играет — монета звенит! Потягаемся?', 'Кинь звонкую монету, путник!'],
+          luck: ['Вот так потешка на весь уезд!', 'Звени, монета, звени!'],
+          risky: ['Ради потешки и рискну!', 'Пусть уезд посмеётся — кидаю!'],
+          bank: ['Хватит на гуслярский звон, забираю.', 'Монета в кошель — и с поклоном.'],
+          zonk: ['Ох, и потешка вышла — пусто!', 'Струны-то врут, и кости туда же.'],
+          win: ['Про меня на весь уезд споют!', 'Гусляр тебе и потешку, и монету.'],
+          lose: ['Спою про тебя — да не зло.', 'Ещё споём, путник, ещё!']
+        }
+      },
+      {
+        id: 'lovchiy',
+        name: 'Ловчий',
+        fullName: 'Седой Ловчий',
+        title: 'Охотник на нечисть',
+        avatar: '🏹',
+        photo: 'assets/npc-hunter.jpg',
+        bet: 150,
+        styleType: 'gambler',
+        joke: [
+          'Ненавижу азарт. Кидай.',
+          'Волков бил. С костями как-то сложнее.',
+          'Хм. Только не жульничай. Я по следам читаю.'
+        ],
+        svg: `<svg viewBox="0 0 64 64" aria-hidden="true">
+          <defs>
+            <radialGradient id="lov-bg" cx="50%" cy="30%" r="78%">
+              <stop offset="0" stop-color="#3a4a52"/><stop offset="1" stop-color="#0e1418"/>
+            </radialGradient>
+          </defs>
+          <rect width="64" height="64" fill="url(#lov-bg)"/>
+          <path d="M32 8c11 0 16 9 16 19v12c0 10-7 16-16 16s-16-6-16-16V27c0-10 5-19 16-19z" fill="#39424a"/>
+          <path d="M32 8c11 0 16 9 16 19" fill="none" stroke="#5e6a74" stroke-width="1.4"/>
+          <circle cx="32" cy="31" r="10.5" fill="#e2c39c"/>
+          <path d="M32 41c-6 0-9.5 4-9.5 10h19c0-6-3.5-10-9.5-10z" fill="#c3c0ba"/>
+          <path d="M22 28c1-7 5-10 10-10s9 3 10 10c-2-3-5-4-10-4s-8 1-10 4z" fill="#cfd3d8"/>
+          <circle cx="28" cy="30" r="1.6" fill="#2f2419"/>
+          <circle cx="36" cy="30" r="1.6" fill="#2f2419"/>
+          <path d="M11 14c-5 12-5 24 0 36" fill="none" stroke="#8a5a2a" stroke-width="2.8" stroke-linecap="round"/>
+          <path d="M11 15v34" stroke="#efe9d6" stroke-width="1"/>
+        </svg>`,
+        style: 'Мастер риска: агрессивен в концовке, любит «1» и «5»',
+        lines: {
+          start: ['Хм. Кидай.', 'Ненавижу азарт. Ходи.'],
+          luck: ['Хм… Годится.', 'Нечисть бы так шла.'],
+          risky: ['Хм. Ещё раз.', 'Рискну. Без охоты.'],
+          bank: ['Беру. Довольно.', 'Хм. В кошель.'],
+          zonk: ['Хм… Зараза.', 'Пусто. Ненавижу азарт.'],
+          win: ['Хм. Ненавижу азарт. Но выиграл.', 'Забирай своё и уйди.'],
+          lose: ['Хм. Твоя взяла.', 'Довольно. Ухожу.']
+        }
+      }
+    ];
+
+    /* ==========================================================================
+       2c-2. Сцена зала: соперники-медальоны, карточка-свиток и живой декор
+       ========================================================================== */
+    let selectedNpcId = null;
+    let previewNpcId = null;
+    let cardJoke = '';
+
+    function renderOpponents() {
+      const layer = document.getElementById('npcLayer');
+      if (!layer) return;
+
+      layer.innerHTML = '';
+
+      OPPONENTS.forEach(opp => {
+        const affordable = gold >= opp.bet;
+        const spot = document.createElement('button');
+        spot.type = 'button';
+        spot.dataset.npc = opp.id;
+        spot.className = 'npc-spot npc-' + opp.id +
+          (affordable ? '' : ' locked') +
+          (selectedNpcId === opp.id ? ' selected' : '');
+        spot.setAttribute('aria-label', `${opp.fullName} — ставка ${opp.bet} грошей`);
+        spot.innerHTML =
+          `<span class="npc-glow"></span>` +
+          `<span class="npc-medallion">` +
+            opp.svg.replace('<svg ', '<svg class="npc-svg" ') +
+            `<img class="npc-photo" src="${opp.photo}" alt="" onerror="this.style.display='none'">` +
+          `</span>` +
+          `<span class="npc-plate">` +
+            `<span class="npc-plate-name">${opp.name}</span>` +
+            `<span class="npc-plate-bet">${opp.bet} 🪙</span>` +
+          `</span>`;
+
+        spot.addEventListener('click', () => onNpcClick(opp));
+        spot.addEventListener('pointerenter', (e) => {
+          // Наведение «мышью» показывает свиток, но ставку не подтверждает
+          if (e.pointerType !== 'mouse') return;
+          previewNpc(opp);
+        });
+
+        layer.appendChild(spot);
+      });
+    }
+
+    function highlightNpc(id) {
+      document.querySelectorAll('.npc-spot').forEach(el => {
+        el.classList.toggle('selected', Boolean(id) && el.dataset.npc === id);
+      });
+    }
+
+    function previewNpc(opp) {
+      if (matchState === 'playing') return;
+      if (selectedNpcId === opp.id || previewNpcId === opp.id) return;
+
+      previewNpcId = opp.id;
+      cardJoke = '';
+      showNpcCard(opp);
+    }
+
+    function selectNpc(opp, withSound) {
+      if (selectedNpcId !== opp.id) cardJoke = '';
+      selectedNpcId = opp.id;
+      previewNpcId = opp.id;
+      highlightNpc(opp.id);
+      showNpcCard(opp);
+
+      if (withSound) {
+        soundManager.init();
+        soundManager.playSelect();
+        triggerHaptic('impact', 'light');
+      }
+    }
+
+    function onNpcClick(opp) {
+      if (matchState === 'playing') return;
+
+      // Повторный клик по тому же сопернику — партия начинается сразу
+      if (selectedNpcId === opp.id) {
+        startMatch(opp);
+        return;
+      }
+
+      selectNpc(opp, true);
+    }
+
+    /* Карточка-свиток выбранного соперника */
+    function showNpcCard(opp) {
+      const card = document.getElementById('npcScroll');
+      if (!card || !opp) return;
+
+      const affordable = gold >= opp.bet;
+      if (!cardJoke) {
+        cardJoke = (opp.joke && opp.joke.length)
+          ? opp.joke[Math.floor(Math.random() * opp.joke.length)]
+          : '';
+      }
+
+      card.className = 'npc-scroll show';
+      card.innerHTML =
+        `<div class="scroll-head">` +
+          `<span class="scroll-name">${opp.fullName}</span>` +
+          `<span class="scroll-title">${opp.title}</span>` +
+        `</div>` +
+        (cardJoke ? `<p class="scroll-line">«${cardJoke}»</p>` : '') +
+        `<div class="scroll-bet"><span>Ставка:</span><strong>${opp.bet} 🪙</strong></div>` +
+        `<button type="button" class="btn btn-primary scroll-play"${affordable ? '' : ' disabled'}>` +
+          `Сыграть (${opp.bet} грошей)</button>` +
+        (affordable
+          ? `<div class="scroll-tip">Нажмите на соперника ещё раз — партия начнётся.</div>`
+          : `<div class="scroll-hint">В кошеле лишь ${gold} грошей — попросите милостыню у входа.</div>`);
+
+      const playBtn = card.querySelector('.scroll-play');
+      if (playBtn && affordable) {
+        playBtn.addEventListener('click', () => startMatch(opp));
+      }
+
+      const hint = document.getElementById('hallHint');
+      if (hint) hint.classList.add('hidden');
+    }
+
+    function hideNpcCard() {
+      const card = document.getElementById('npcScroll');
+      if (card) {
+        card.classList.remove('show');
+        card.innerHTML = '';
+      }
+    }
+
+    function refreshNpcCard() {
+      if (!selectedNpcId) return;
+      const opp = OPPONENTS.find(o => o.id === selectedNpcId);
+      if (opp) showNpcCard(opp);
+    }
+
+    function clearNpcSelection() {
+      selectedNpcId = null;
+      previewNpcId = null;
+      cardJoke = '';
+      hideNpcCard();
+      highlightNpc(null);
+    }
+
+    // Клик по пустому месту зала убирает свиток
+    document.getElementById('hallScene').addEventListener('click', (e) => {
+      if (e.target.closest('.npc-spot') || e.target.closest('.npc-scroll')) return;
+      if (!selectedNpcId && !previewNpcId) return;
+      clearNpcSelection();
+    });
+
+    /* ==========================================================================
+       2c-3. Живой декор зала и стола (слои «Обустройства») + всплывающие очки
+       ========================================================================== */
+    const HALL_CANDLE_SPOTS = [
+      { x: 24, y: 30, s: 1.0, stand: false },
+      { x: 46, y: 21, s: 1.15, stand: true },
+      { x: 70, y: 33, s: 0.95, stand: false },
+      { x: 13, y: 58, s: 0.9, stand: true },
+      { x: 86, y: 62, s: 0.95, stand: false }
+    ];
+
+    const TABLE_CANDLE_SPOTS = [
+      { x: 6, y: 7, s: 0.8, stand: false },
+      { x: 92, y: 11, s: 0.85, stand: false },
+      { x: 6, y: 78, s: 0.8, stand: false },
+      { x: 92, y: 80, s: 0.85, stand: false }
+    ];
+
+    function candleMarkup(spot, index) {
+      return `<span class="candle${spot.stand ? ' with-stand' : ''}" ` +
+        `style="left: ${spot.x}%; top: ${spot.y}%; --sc: ${spot.s}; --cd: ${(index * 0.37).toFixed(2)}s">` +
+        `<i class="cup"></i></span>`;
+    }
+
+    function sparkMarkup(count, spots) {
+      let out = '';
+      for (let i = 0; i < count; i++) {
+        const spot = spots[i % spots.length];
+        const dx = (Math.random() * 26 - 13).toFixed(1);
+        const dy = (Math.random() * 14 - 7).toFixed(1);
+        out += `<span class="spark" style="left: ${spot.x}%; top: ${spot.y}%; ` +
+          `margin-left: ${dx}px; margin-top: ${dy}px; --sd: ${(Math.random() * 3.4).toFixed(2)}s"></span>`;
+      }
+      return out;
+    }
+
+    let hallDecorBuilt = false;
+
+    function renderHallDecor() {
+      if (hallDecorBuilt) return;
+      hallDecorBuilt = true;
+
+      const hallCandles = document.getElementById('hallCandles');
+      const hallSparks = document.getElementById('hallSparks');
+      const tableCandles = document.getElementById('tableCandles');
+
+      if (hallCandles) hallCandles.innerHTML = HALL_CANDLE_SPOTS.map(candleMarkup).join('');
+      if (hallSparks) hallSparks.innerHTML = sparkMarkup(14, HALL_CANDLE_SPOTS);
+      if (tableCandles) {
+        tableCandles.innerHTML = TABLE_CANDLE_SPOTS.map(candleMarkup).join('') +
+          sparkMarkup(6, TABLE_CANDLE_SPOTS);
+      }
+    }
+
+    function spawnFloatScore(text, container) {
+      if (!container) return;
+      const el = document.createElement('span');
+      el.className = 'float-score';
+      el.textContent = text;
+      container.appendChild(el);
+      setTimeout(() => el.remove(), 1200);
+    }
+
+    function updateBegButton() {
+      // Кнопка нужна, чтобы нельзя было застрять без грошей на ставку (минимум 10)
+      document.getElementById('begBtn').style.display = gold < 10 ? 'flex' : 'none';
+    }
+
+    function renderTavern() {
+      renderHallDecor();
+      updateHeader();
+      renderOpponents();
+      renderQuestBadge();
+      updateBegButton();
+      renderUpgradeButton();
+      refreshNpcCard();
+    }
+
+    /* ==========================================================================
+       2h. Прогрессия: обустройство постоялого двора (4 улучшения по порядку)
+       ========================================================================== */
+    const UPGRADES = [
+      {
+        id: 'candles',
+        name: 'Сальные свечи и шандал',
+        desc: 'Яркие мерцающие свечи с золотым ореолом и летящими искрами в зале и на столе.',
+        cost: 150,
+        cls: 'upg-candles'
+      },
+      {
+        id: 'oak',
+        name: 'Дубовая стойка и бочонки сбитеня',
+        desc: 'Резная дубовая стойка и бочонки: рама с золотыми заклёпками вокруг зала и стола.',
+        cost: 400,
+        cls: 'upg-oak'
+      },
+      {
+        id: 'cloth',
+        name: 'Зелёное сукно и берестяной стакан',
+        desc: 'Центр стола застлан изумрудным сукном с золотым кантом и стаканом для костей.',
+        cost: 800,
+        cls: 'upg-cloth'
+      },
+      {
+        id: 'crest',
+        name: 'Уездная грамота и герб',
+        desc: 'Герб над названием двора, золотая корона у имени игрока и пропуск в Сезон 2.',
+        cost: 1500,
+        cls: 'upg-crest'
+      }
+    ];
+
+    function loadUpgrades() {
+      let stored = [];
+      try {
+        stored = JSON.parse(localStorage.getItem(STORAGE_KEYS.upgrades) || '[]');
+      } catch (e) {
+        stored = [];
+      }
+      if (!Array.isArray(stored)) stored = [];
+
+      // Улучшения покупаются строго по порядку — восстанавливаем только валидную цепочку
+      const result = [];
+      for (const upgrade of UPGRADES) {
+        if (stored.includes(upgrade.id)) result.push(upgrade.id);
+        else break;
+      }
+      return result;
+    }
+
+    let purchasedUpgrades = loadUpgrades();
+
+    function saveUpgrades() {
+      localStorage.setItem(STORAGE_KEYS.upgrades, JSON.stringify(purchasedUpgrades));
+    }
+
+    function isUpgradeBought(id) {
+      return purchasedUpgrades.includes(id);
+    }
+
+    function nextUpgrade() {
+      return UPGRADES.find(u => !isUpgradeBought(u.id)) || null;
+    }
+
+    function applyUpgrades() {
+      const app = document.getElementById('app');
+      UPGRADES.forEach(u => app.classList.toggle(u.cls, isUpgradeBought(u.id)));
+    }
+
+    function renderUpgradeButton() {
+      const btn = document.getElementById('upgradeBtn');
+      if (!btn) return;
+      btn.textContent = `🏠 Обустройство (${purchasedUpgrades.length}/4)`;
+    }
+
+    function renderUpgrades() {
+      const list = document.getElementById('upgradeList');
+      if (!list) return;
+
+      const next = nextUpgrade();
+      list.innerHTML = '';
+
+      UPGRADES.forEach(upgrade => {
+        const bought = isUpgradeBought(upgrade.id);
+        const isNext = !bought && next && next.id === upgrade.id;
+        const affordable = gold >= upgrade.cost;
+
+        const item = document.createElement('div');
+        item.className = 'shop-item' + (bought ? ' done' : '');
+        item.innerHTML =
+          `<div class="shop-info">` +
+            `<div class="shop-name">${upgrade.name}</div>` +
+            `<div class="shop-desc">${upgrade.desc}</div>` +
+            `<div class="shop-cost">${bought ? '<span class="tag-ok">✔ Обустроено</span>' : `${upgrade.cost} 🪙`}</div>` +
+          `</div>`;
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'shop-btn' + (bought ? '' : ' buy');
+        btn.textContent = bought ? 'Готово' : (isNext ? 'Купить' : 'По порядку');
+        btn.disabled = bought || !isNext || !affordable;
+        if (isNext) btn.addEventListener('click', () => buyUpgrade(upgrade.id));
+
+        item.appendChild(btn);
+        list.appendChild(item);
+      });
+    }
+
+    function buyUpgrade(id) {
+      const upgrade = UPGRADES.find(u => u.id === id);
+      const next = nextUpgrade();
+      if (!upgrade || !next || next.id !== id || isUpgradeBought(id)) return;
+
+      if (gold < upgrade.cost) {
+        showToast(`Нужно ${upgrade.cost} грошей, а в кошеле лишь ${gold}.`);
+        triggerHaptic('notification', 'error');
+        return;
+      }
+
+      soundManager.init();
+      addGold(-upgrade.cost);
+      purchasedUpgrades.push(upgrade.id);
+      saveUpgrades();
+      applyUpgrades();
+      renderUpgrades();
+      renderUpgradeButton();
+      soundManager.playCoin();
+      triggerHaptic('notification', 'success');
+      showToast(`Обустроено: «${upgrade.name}»!`);
+    }
+
+    /* ==========================================================================
+       2i. Лавка особых костей: покупка, экипировка и свои веса при броске
+       ========================================================================== */
+    const DICE_TYPES = {
+      ordinary: {
+        id: 'ordinary',
+        name: 'Обычная костяная',
+        desc: 'Равные шансы на 1–6.',
+        cost: 0,
+        preview: 'preview-ordinary',
+        weights: { 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1 }
+      },
+      odd: {
+        id: 'odd',
+        name: 'Нечётная кость',
+        desc: 'Нечеть любит: повышенный шанс на 1, 3 и 5. Тёмный костяной оттенок.',
+        cost: 120,
+        preview: 'preview-odd',
+        weights: { 1: 2, 2: 1, 3: 2, 4: 1, 5: 2, 6: 1 }
+      },
+      merchant: {
+        id: 'merchant',
+        name: 'Купеческая счастливая',
+        desc: 'Купцу везёт в крайностях: повышенный шанс на 1 и 6. Золотистый оттенок.',
+        cost: 250,
+        preview: 'preview-merchant',
+        weights: { 1: 2, 2: 1, 3: 1, 4: 1, 5: 1, 6: 2 }
+      },
+      wolf: {
+        id: 'wolf',
+        name: 'Волчья кость Ловчего',
+        desc: 'Ловчий бьёт в призовое: повышенный шанс на 1 и 5. Тёмно-бордовый с янтарём.',
+        cost: 450,
+        preview: 'preview-wolf',
+        weights: { 1: 2, 2: 1, 3: 1, 4: 1, 5: 2, 6: 1 }
+      }
+    };
+
+    const SPECIAL_DICE_IDS = ['odd', 'merchant', 'wolf'];
+    const MAX_SPECIAL_DICE = 3;
+    const DICE_SET_SIZE = 6;
+
+    function loadStringArray(key) {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(key) || '[]');
+        return Array.isArray(parsed) ? parsed.filter(v => typeof v === 'string') : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    let ownedDice = loadStringArray(STORAGE_KEYS.diceOwned)
+      .filter(id => SPECIAL_DICE_IDS.includes(id));
+
+    let equippedDice = loadStringArray(STORAGE_KEYS.diceEquipped)
+      .filter(id => ownedDice.includes(id))
+      .slice(0, MAX_SPECIAL_DICE);
+
+    function saveDice() {
+      localStorage.setItem(STORAGE_KEYS.diceOwned, JSON.stringify(ownedDice));
+      localStorage.setItem(STORAGE_KEYS.diceEquipped, JSON.stringify(equippedDice));
+    }
+
+    // Набор игрока: сначала особые кости, остальное — обычные (всего 6)
+    function getPlayerDiceSet() {
+      const set = equippedDice.slice(0, MAX_SPECIAL_DICE);
+      while (set.length < DICE_SET_SIZE) set.push('ordinary');
+      return set.slice(0, DICE_SET_SIZE);
+    }
+
+    function renderDiceSetRow() {
+      const row = document.getElementById('diceSetRow');
+      if (!row) return;
+      row.innerHTML = '';
+      getPlayerDiceSet().forEach(typeId => {
+        const type = DICE_TYPES[typeId] || DICE_TYPES.ordinary;
+        const el = document.createElement('div');
+        el.className = 'dice-preview ' + type.preview;
+        el.title = type.name;
+        row.appendChild(el);
+      });
+    }
+
+    function renderDiceShop() {
+      const list = document.getElementById('diceShopList');
+      if (!list) return;
+
+      const note = document.getElementById('diceShopNote');
+      if (note) note.textContent = `Особых костей в наборе: ${equippedDice.length} / ${MAX_SPECIAL_DICE}`;
+
+      renderDiceSetRow();
+      list.innerHTML = '';
+
+      SPECIAL_DICE_IDS.forEach(id => {
+        const type = DICE_TYPES[id];
+        const owned = ownedDice.includes(id);
+        const equipped = equippedDice.includes(id);
+
+        const item = document.createElement('div');
+        item.className = 'shop-item' + (equipped ? ' equipped' : (owned ? ' done' : ''));
+        item.innerHTML =
+          `<div class="dice-preview ${type.preview}"></div>` +
+          `<div class="shop-info">` +
+            `<div class="shop-name">${type.name}</div>` +
+            `<div class="shop-desc">${type.desc}</div>` +
+            `<div class="shop-cost">${owned
+              ? (equipped ? '<span class="tag-ok">✔ В наборе</span>' : '<span class="tag-ok">✔ Куплено</span>')
+              : `${type.cost} 🪙`}</div>` +
+          `</div>`;
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+
+        if (!owned) {
+          btn.className = 'shop-btn buy';
+          btn.textContent = 'Купить';
+          btn.disabled = gold < type.cost;
+          btn.addEventListener('click', () => buyDice(id));
+        } else if (equipped) {
+          btn.className = 'shop-btn';
+          btn.textContent = 'Снять';
+          btn.addEventListener('click', () => equipDice(id, false));
+        } else {
+          btn.className = 'shop-btn equip';
+          btn.textContent = 'Экипировать';
+          btn.disabled = equippedDice.length >= MAX_SPECIAL_DICE;
+          btn.addEventListener('click', () => equipDice(id, true));
+        }
+
+        item.appendChild(btn);
+        list.appendChild(item);
+      });
+    }
+
+    function buyDice(id) {
+      const type = DICE_TYPES[id];
+      if (!type || ownedDice.includes(id)) return;
+
+      if (gold < type.cost) {
+        showToast(`Нужно ${type.cost} грошей, а в кошеле лишь ${gold}.`);
+        triggerHaptic('notification', 'error');
+        return;
+      }
+
+      soundManager.init();
+      addGold(-type.cost);
+      ownedDice.push(id);
+      if (equippedDice.length < MAX_SPECIAL_DICE) equippedDice.push(id);
+      saveDice();
+      soundManager.playCoin();
+      triggerHaptic('notification', 'success');
+      showToast(`Кость куплена: «${type.name}»!`);
+      renderDiceShop();
+    }
+
+    function equipDice(id, equip) {
+      const type = DICE_TYPES[id];
+      if (!type) return;
+
+      if (equip) {
+        if (!ownedDice.includes(id) || equippedDice.includes(id)) return;
+        if (equippedDice.length >= MAX_SPECIAL_DICE) {
+          showToast(`В наборе уже ${MAX_SPECIAL_DICE} особых костей. Сначала снимите одну.`);
+          triggerHaptic('notification', 'warning');
+          return;
+        }
+        equippedDice.push(id);
+        showToast(`«${type.name}» — в наборе.`);
+      } else {
+        equippedDice = equippedDice.filter(item => item !== id);
+        showToast(`«${type.name}» — из набора убрана.`);
+      }
+
+      saveDice();
+      soundManager.init();
+      soundManager.playSelect();
+      triggerHaptic('impact', 'light');
+      renderDiceShop();
+    }
+
+    /* ==========================================================================
+       3. Combination Scoring Engine
+       ========================================================================== */
+    function evaluateDiceSelection(values) {
+      if (!values || values.length === 0) {
+        return { score: 0, valid: true, comboName: '' };
+      }
+
+      const counts = [0, 0, 0, 0, 0, 0, 0];
+      values.forEach(v => counts[v]++);
+
+      let score = 0;
+      let usedCount = 0;
+      let comboName = '';
+
+      // Check 6-dice special combos
+      if (values.length === 6) {
+        // Straight 1-6
+        if (counts[1]===1 && counts[2]===1 && counts[3]===1 && counts[4]===1 && counts[5]===1 && counts[6]===1) {
+          return { score: 1500, valid: true, comboName: 'Стрит (1-6) [+1500]' };
+        }
+        // Three pairs
+        const pairs = counts.filter(c => c === 2).length;
+        const quad = counts.filter(c => c === 4).length;
+        if (pairs === 3 || (quad === 1 && pairs === 1)) {
+          return { score: 750, valid: true, comboName: '3 пары [+750]' };
+        }
+      }
+
+      // Check N of a kind (6, 5, 4, 3)
+      for (let val = 1; val <= 6; val++) {
+        if (counts[val] >= 6) {
+          score += 3000;
+          usedCount += 6;
+          counts[val] -= 6;
+          comboName += ` 6×${val} [+3000]`;
+        } else if (counts[val] >= 5) {
+          score += 2000;
+          usedCount += 5;
+          counts[val] -= 5;
+          comboName += ` 5×${val} [+2000]`;
+        } else if (counts[val] >= 4) {
+          score += 1000;
+          usedCount += 4;
+          counts[val] -= 4;
+          comboName += ` 4×${val} [+1000]`;
+        } else if (counts[val] >= 3) {
+          const pts = (val === 1 ? 1000 : val * 100);
+          score += pts;
+          usedCount += 3;
+          counts[val] -= 3;
+          comboName += ` 3×${val} [+${pts}]`;
+        }
+      }
+
+      // Check singles (1s and 5s)
+      if (counts[1] > 0) {
+        score += counts[1] * 100;
+        usedCount += counts[1];
+        comboName += ` Единица (×${counts[1]})`;
+        counts[1] = 0;
+      }
+      if (counts[5] > 0) {
+        score += counts[5] * 50;
+        usedCount += counts[5];
+        comboName += ` Пятерка (×${counts[5]})`;
+        counts[5] = 0;
+      }
+
+      const valid = (usedCount === values.length);
+      return {
+        score: valid ? score : 0,
+        valid: valid,
+        comboName: valid ? comboName.trim() : 'Неверный выбор (только призовые кости!)'
+      };
+    }
+
+    function hasScoringDice(rolledValues) {
+      if (!rolledValues || rolledValues.length === 0) return false;
+      const counts = [0, 0, 0, 0, 0, 0, 0];
+      rolledValues.forEach(v => counts[v]++);
+
+      if (counts[1] > 0 || counts[5] > 0) return true;
+      if (counts.some(c => c >= 3)) return true;
+      if (rolledValues.length === 6) {
+        if (counts[1]===1 && counts[2]===1 && counts[3]===1 && counts[4]===1 && counts[5]===1 && counts[6]===1) return true;
+        const pairs = counts.filter(c => c === 2).length;
+        const quad = counts.filter(c => c === 4).length;
+        if (pairs === 3 || (quad === 1 && pairs === 1)) return true;
+      }
+      return false;
+    }
+
+    /* ==========================================================================
+       2d. Daily Quests (Дейлики) — 3 задания, привязанных к дате YYYY-MM-DD
+       ========================================================================== */
+    const QUESTS = [
+      {
+        id: 'plays',
+        name: 'Разогрев в корчме',
+        desc: 'Сыграй 3 партии за столом',
+        goal: 3,
+        reward: 30
+      },
+      {
+        id: 'hand',
+        name: 'Удачная рука',
+        desc: 'Набери 600 или более очков за один ход',
+        goal: 600,
+        reward: 50
+      },
+      {
+        id: 'wins',
+        name: 'Гроза таверны',
+        desc: 'Одержи 2 победы над любыми соперниками',
+        goal: 2,
+        reward: 80
+      }
+    ];
+
+    function todayKey() {
+      const d = new Date();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${d.getFullYear()}-${mm}-${dd}`;
+    }
+
+    function loadQuestState() {
+      let state = null;
+      try {
+        state = JSON.parse(localStorage.getItem(STORAGE_KEYS.quests) || 'null');
+      } catch (e) {
+        state = null;
+      }
+
+      const today = todayKey();
+      if (!state || typeof state !== 'object' || state.date !== today) {
+        // Задания обновляются раз в сутки — прогресс старой даты сбрасывается
+        state = { date: today, progress: {}, claimed: {} };
+      }
+
+      state.progress = state.progress || {};
+      state.claimed = state.claimed || {};
+      QUESTS.forEach(q => {
+        if (typeof state.progress[q.id] !== 'number') state.progress[q.id] = 0;
+        if (typeof state.claimed[q.id] !== 'boolean') state.claimed[q.id] = false;
+      });
+      return state;
+    }
+
+    function saveQuestState() {
+      localStorage.setItem(STORAGE_KEYS.quests, JSON.stringify(questState));
+    }
+
+    let questState = loadQuestState();
+    saveQuestState();
+
+    function questProgress(quest) {
+      return Math.min(questState.progress[quest.id] || 0, quest.goal);
+    }
+
+    function isQuestDone(quest) {
+      return questProgress(quest) >= quest.goal;
+    }
+
+    function isQuestClaimed(quest) {
+      return Boolean(questState.claimed[quest.id]);
+    }
+
+    function questsReadyToClaim() {
+      return QUESTS.filter(q => isQuestDone(q) && !isQuestClaimed(q)).length;
+    }
+
+    function bumpQuest(id, amount = 1) {
+      const quest = QUESTS.find(q => q.id === id);
+      if (!quest || isQuestClaimed(quest)) return;
+
+      const current = questState.progress[id] || 0;
+      const next = Math.min(current + amount, quest.goal);
+      if (next === current) return;
+
+      questState.progress[id] = next;
+      saveQuestState();
+      renderQuestBadge();
+      if (current < quest.goal && next >= quest.goal) {
+        showToast(`Задание «${quest.name}» выполнено!`);
+      }
+    }
+
+    function raiseQuest(id, value) {
+      const quest = QUESTS.find(q => q.id === id);
+      if (!quest || isQuestClaimed(quest)) return;
+
+      const current = questState.progress[id] || 0;
+      if (value <= current) return;
+
+      questState.progress[id] = Math.min(value, quest.goal);
+      saveQuestState();
+      renderQuestBadge();
+      if (current < quest.goal && value >= quest.goal) {
+        showToast(`Задание «${quest.name}» выполнено!`);
+      }
+    }
+
+    function renderQuestBadge() {
+      const badge = document.getElementById('questBadge');
+      if (!badge) return;
+      const ready = questsReadyToClaim();
+      badge.textContent = ready;
+      badge.classList.toggle('show', ready > 0);
+    }
+
+    function renderQuests() {
+      document.getElementById('questDayLabel').textContent =
+        `Задания на ${questState.date} · обновятся после полуночи`;
+
+      const list = document.getElementById('questList');
+      list.innerHTML = '';
+
+      QUESTS.forEach(quest => {
+        const progress = questProgress(quest);
+        const done = isQuestDone(quest);
+        const claimed = isQuestClaimed(quest);
+        const percent = Math.round((progress / quest.goal) * 100);
+
+        const item = document.createElement('div');
+        item.className = 'quest-item' + (done ? ' done' : '') + (claimed ? ' claimed' : '');
+        item.innerHTML =
+          `<div class="quest-top">` +
+            `<span class="quest-name">${quest.name}</span>` +
+            `<span class="quest-reward">+${quest.reward} 🪙</span>` +
+          `</div>` +
+          `<div class="quest-desc">${quest.desc}</div>` +
+          `<div class="quest-bar"><div class="quest-fill" style="width: ${percent}%"></div></div>` +
+          `<div class="quest-progress"><span>${progress} / ${quest.goal}</span>` +
+          `<span>${claimed ? '✅ Получено' : (done ? '✔ Готово' : 'В процессе')}</span></div>` +
+          `<button class="btn quest-claim ${done && !claimed ? 'btn-secondary' : 'btn-primary'}"` +
+          ` data-quest="${quest.id}"${done && !claimed ? '' : ' disabled'}>` +
+          `${claimed ? 'Награда получена' : 'Забрать награду'}</button>`;
+        list.appendChild(item);
+      });
+
+      list.querySelectorAll('.quest-claim').forEach(btn => {
+        btn.addEventListener('click', () => claimQuest(btn.dataset.quest));
+      });
+    }
+
+    function claimQuest(id) {
+      const quest = QUESTS.find(q => q.id === id);
+      if (!quest || !isQuestDone(quest) || isQuestClaimed(quest)) return;
+
+      questState.claimed[id] = true;
+      saveQuestState();
+
+      soundManager.init();
+      addGold(quest.reward, true);
+      triggerHaptic('notification', 'success');
+      showToast(`Награда получена: +${quest.reward} грошей!`);
+
+      renderQuests();
+      renderQuestBadge();
+    }
+
+    /* ==========================================================================
+       4. Game State & Logic
+       ========================================================================== */
+    const TARGET_SCORE = 2000;
+
+    let gameState = {
+      playerTotal: 0,
+      playerTurn: 0,
+      aiTotal: 0,
+      aiTurn: 0,
+      currentTurn: 'player', // 'player' | 'ai'
+      isRolling: false,
+      dice: [] // Array of { id, value, state: 'rolled' | 'selected' | 'banked' }
+    };
+
+    // Счёт партии живёт в gameState; экономика и победы — в updateHeader().
+
+    function createDiceElement(dieObj, isAI = false) {
+      const el = document.createElement('div');
+      el.className = `die ${dieObj.state}`;
+      if (dieObj.special && dieObj.special !== 'ordinary') {
+        el.classList.add('special-' + dieObj.special);
+      }
+      el.dataset.id = dieObj.id;
+      el.dataset.value = dieObj.value;
+
+      for (let i = 0; i < 9; i++) {
+        const pip = document.createElement('div');
+        pip.className = 'pip';
+        el.appendChild(pip);
+      }
+
+      if (!isAI && gameState.currentTurn === 'player' && dieObj.state === 'rolled') {
+        el.addEventListener('click', () => handleDieClick(dieObj.id));
+      } else if (!isAI && gameState.currentTurn === 'player' && dieObj.state === 'selected') {
+        el.addEventListener('click', () => handleDieClick(dieObj.id));
+      } else {
+        el.classList.add('disabled');
+      }
+
+      return el;
+    }
+
+    function renderTable() {
+      const rolledArea = document.getElementById('rolledDiceArea');
+      const keptArea = document.getElementById('keptDiceArea');
+      rolledArea.innerHTML = '';
+      keptArea.innerHTML = '';
+
+      const isAI = gameState.currentTurn === 'ai';
+
+      gameState.dice.forEach(dieObj => {
+        const el = createDiceElement(dieObj, isAI);
+        if (dieObj.state === 'rolled') {
+          rolledArea.appendChild(el);
+        } else if (dieObj.state === 'selected' || dieObj.state === 'banked') {
+          keptArea.appendChild(el);
+        }
+      });
+
+      document.getElementById('playerTotalScore').textContent = gameState.playerTotal;
+      document.getElementById('playerTurnScore').textContent = gameState.playerTurn;
+      document.getElementById('playerProgress').style.width = Math.min(100, (gameState.playerTotal / TARGET_SCORE) * 100) + '%';
+
+      document.getElementById('aiTotalScore').textContent = gameState.aiTotal;
+      document.getElementById('aiTurnScore').textContent = gameState.aiTurn;
+      document.getElementById('aiProgress').style.width = Math.min(100, (gameState.aiTotal / TARGET_SCORE) * 100) + '%';
+
+      const playerCard = document.getElementById('playerCard');
+      const aiCard = document.getElementById('aiCard');
+      if (gameState.currentTurn === 'player') {
+        playerCard.classList.add('active-turn');
+        aiCard.classList.remove('active-turn');
+      } else {
+        aiCard.classList.add('active-turn');
+        playerCard.classList.remove('active-turn');
+      }
+
+      updateControls();
+    }
+
+    function updateControls() {
+      const rollBtn = document.getElementById('rollBtn');
+      const bankBtn = document.getElementById('bankBtn');
+
+      if (matchState !== 'playing' || gameState.currentTurn !== 'player' || gameState.isRolling) {
+        rollBtn.disabled = true;
+        bankBtn.disabled = true;
+        return;
+      }
+
+      const selectedDice = gameState.dice.filter(d => d.state === 'selected');
+      const evalResult = evaluateDiceSelection(selectedDice.map(d => d.value));
+
+      const isInitialRollOfTurn = gameState.dice.length === 0;
+
+      if (isInitialRollOfTurn) {
+        rollBtn.disabled = false;
+        bankBtn.disabled = true;
+        return;
+      }
+
+      if (selectedDice.length > 0 && evalResult.valid) {
+        rollBtn.disabled = false;
+        const totalTurnAfterBank = gameState.playerTurn + evalResult.score;
+        bankBtn.disabled = totalTurnAfterBank <= 0;
+      } else {
+        rollBtn.disabled = true;
+        bankBtn.disabled = true;
+      }
+    }
+    /* ==========================================================================
+       2e. UI helpers: toast, подтверждение, реплики соперника
+       ========================================================================== */
+    let toastTimer = null;
+
+    function showToast(text) {
+      const toast = document.getElementById('toast');
+      toast.textContent = text;
+      toast.classList.add('show');
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
+    }
+
+    let confirmAction = null;
+
+    function openConfirm(title, html, action) {
+      document.getElementById('confirmTitle').textContent = title;
+      document.getElementById('confirmText').innerHTML = html;
+      confirmAction = action;
+      document.getElementById('confirmModal').classList.add('active');
+    }
+
+    function closeConfirm() {
+      document.getElementById('confirmModal').classList.remove('active');
+      confirmAction = null;
+    }
+
+    let speechTimer = null;
+
+    function sayOpponent(kind) {
+      if (!currentOpponent) return;
+      const pool = (currentOpponent.lines && currentOpponent.lines[kind]) || [];
+      if (!pool.length) return;
+
+      const bubble = document.getElementById('speechBubble');
+      bubble.textContent = pool[Math.floor(Math.random() * pool.length)];
+      bubble.classList.add('show');
+      if (speechTimer) clearTimeout(speechTimer);
+      speechTimer = setTimeout(() => bubble.classList.remove('show'), 2600);
+    }
+
+    function hideSpeech() {
+      document.getElementById('speechBubble').classList.remove('show');
+    }
+
+    /* ==========================================================================
+       2f. Screens navigation & matchmaking (ставки в грошах)
+       ========================================================================== */
+    let currentOpponent = null;
+    let matchState = 'tavern'; // 'tavern' | 'playing' | 'over'
+
+    function showScreen(name) {
+      document.getElementById('tavernScreen').classList.toggle('active', name === 'tavern');
+      document.getElementById('gameScreen').classList.toggle('active', name === 'game');
+    }
+
+    function resetBoard() {
+      gameState.playerTotal = 0;
+      gameState.playerTurn = 0;
+      gameState.aiTotal = 0;
+      gameState.aiTurn = 0;
+      gameState.dice = [];
+      gameState.isRolling = false;
+      gameState.currentTurn = 'player';
+      document.getElementById('zonkOverlay').classList.remove('active');
+      renderTable();
+    }
+
+    function goToTavern() {
+      matchState = 'tavern';
+      currentOpponent = null;
+      hideSpeech();
+      clearNpcSelection();
+      document.getElementById('gameOverModal').classList.remove('active');
+      resetBoard();
+      showScreen('tavern');
+      renderTavern();
+    }
+
+    function leaveTable() {
+      if (matchState === 'playing') {
+        const bet = currentOpponent ? currentOpponent.bet : 0;
+        openConfirm(
+          'Покинуть стол?',
+          `Вы уходите посреди партии. Ставка <strong>${bet}</strong> грошей сгорит, ` +
+          `а партия будет засчитана как проигранная.<br>Точно уйти?`,
+          () => {
+            bumpQuest('plays', 1);
+            showToast('Ставка сгорела… Таверна вас ждёт.');
+            triggerHaptic('notification', 'warning');
+            goToTavern();
+          }
+        );
+        return;
+      }
+      goToTavern();
+    }
+
+    function startMatch(opponent) {
+      if (matchState === 'playing') return;
+
+      if (gold < opponent.bet) {
+        showToast(`Нужно ${opponent.bet} грошей, а в кошеле лишь ${gold}.`);
+        triggerHaptic('notification', 'error');
+        return;
+      }
+
+      currentOpponent = opponent;
+      addGold(-opponent.bet);                  // ставка списывается при старте партии
+      matchState = 'playing';
+      clearNpcSelection();                     // свиток выбранного соперника больше не нужен
+
+      document.getElementById('aiName').textContent = opponent.name;
+      document.getElementById('opponentBadge').textContent =
+        `${opponent.fullName} · ставка ${opponent.bet} 🪙`;
+      document.getElementById('gameOverModal').classList.remove('active');
+
+      resetBoard();
+      showScreen('game');
+
+      soundManager.init();
+      soundManager.playSelect();
+      triggerHaptic('impact', 'medium');
+      sayOpponent('start');
+      startPlayerTurn();
+    }
+
+    /* ==========================================================================
+       5. Turn Actions (Roll, Bank, Zonk, AI)
+       ========================================================================== */
+    function startPlayerTurn() {
+      gameState.currentTurn = 'player';
+      gameState.playerTurn = 0;
+      gameState.dice = [];
+      document.getElementById('aiStatusText').textContent = 'Ваш ход! Бросьте кости.';
+      document.getElementById('comboText').textContent = 'Нажмите «Бросить кости»';
+      renderTable();
+    }
+
+    // Седой Ловчий: слегка повышенный шанс на выпадение «1» и «5»
+    // Особые кости игрока бросаются по своим весам (specialType из набора).
+    function rollDieValue(specialType) {
+      const isGambler = gameState.currentTurn === 'ai'
+        && currentOpponent
+        && currentOpponent.styleType === 'gambler';
+
+      if (isGambler && Math.random() < 0.22) {
+        return Math.random() < 0.6 ? 1 : 5;
+      }
+
+      const type = specialType ? DICE_TYPES[specialType] : null;
+      if (type && type.weights) {
+        let totalWeight = 0;
+        for (let v = 1; v <= 6; v++) totalWeight += type.weights[v];
+
+        let roll = Math.random() * totalWeight;
+        for (let v = 1; v <= 6; v++) {
+          roll -= type.weights[v];
+          if (roll < 0) return v;
+        }
+        return 6;
+      }
+
+      return Math.floor(Math.random() * 6) + 1;
+    }
+
+    function executeRoll() {
+      if (gameState.isRolling || matchState !== 'playing') return;
+      gameState.isRolling = true;
+      updateControls();
+
+      soundManager.playRoll();
+      triggerHaptic('impact', 'medium');
+
+      const selectedDice = gameState.dice.filter(d => d.state === 'selected');
+      if (selectedDice.length > 0) {
+        const evalResult = evaluateDiceSelection(selectedDice.map(d => d.value));
+        if (evalResult.valid) {
+          if (gameState.currentTurn === 'player') {
+            gameState.playerTurn += evalResult.score;
+          } else {
+            gameState.aiTurn += evalResult.score;
+          }
+        }
+        selectedDice.forEach(d => d.state = 'banked');
+      }
+
+      const unbankedCount = gameState.dice.filter(d => d.state !== 'banked').length;
+      let diceToRollCount = unbankedCount;
+      let hotDice = false;
+
+      if (gameState.dice.length === 0 || unbankedCount === 0) {
+        diceToRollCount = 6;
+        hotDice = gameState.dice.length > 0;
+        gameState.dice = [];
+        document.getElementById('comboText').textContent = '🔥 ГОРЯЧИЕ КОСТИ! Все 6 кубиков снова в игре!';
+      }
+
+      const rolledArea = document.getElementById('rolledDiceArea');
+      rolledArea.innerHTML = '';
+      for (let i = 0; i < diceToRollCount; i++) {
+        const placeholder = document.createElement('div');
+        placeholder.className = 'die rolling';
+        rolledArea.appendChild(placeholder);
+      }
+
+      setTimeout(() => {
+        const newDice = [];
+        const startId = gameState.dice.length;
+        const playerDiceSet = gameState.currentTurn === 'player' ? getPlayerDiceSet() : null;
+        for (let i = 0; i < diceToRollCount; i++) {
+          const slot = playerDiceSet ? playerDiceSet[(startId + i) % DICE_SET_SIZE] : null;
+          newDice.push({
+            id: startId + i,
+            value: rollDieValue(slot),
+            special: slot,
+            state: 'rolled'
+          });
+        }
+
+        const bankedDice = gameState.dice.filter(d => d.state === 'banked');
+        gameState.dice = [...bankedDice, ...newDice];
+        gameState.isRolling = false;
+
+        if (matchState !== 'playing') return;
+
+        const currentRollValues = newDice.map(d => d.value);
+        const hasScoring = hasScoringDice(currentRollValues);
+
+        if (!hasScoring) {
+          handleZonk();
+        } else {
+          if (gameState.currentTurn === 'player') {
+            document.getElementById('comboText').textContent = hotDice
+              ? '🔥 Горячие кости! Выберите призовые кости'
+              : 'Выберите кости для сохранения';
+          }
+          renderTable();
+
+          if (gameState.currentTurn === 'ai') {
+            setTimeout(processAITurn, 1200);
+          }
+        }
+      }, 500);
+    }
+
+    function handleZonk() {
+      soundManager.playZonk();
+      triggerHaptic('notification', 'error');
+      if (gameState.currentTurn === 'ai') sayOpponent('zonk');
+
+      const zonkOverlay = document.getElementById('zonkOverlay');
+      zonkOverlay.classList.add('active');
+      document.getElementById('comboText').textContent = '💥 ЗОНК! Очки за ход сгорели!';
+
+      if (gameState.currentTurn === 'player') {
+        gameState.playerTurn = 0;
+      } else {
+        gameState.aiTurn = 0;
+      }
+
+      renderTable();
+
+      setTimeout(() => {
+        zonkOverlay.classList.remove('active');
+        if (matchState !== 'playing') return;
+        if (gameState.currentTurn === 'player') {
+          startAITurn();
+        } else {
+          startPlayerTurn();
+        }
+      }, 1800);
+    }
+
+    function bankPoints() {
+      if (matchState !== 'playing' || gameState.currentTurn !== 'player') return;
+
+      const selectedDice = gameState.dice.filter(d => d.state === 'selected');
+      const evalResult = evaluateDiceSelection(selectedDice.map(d => d.value));
+      if (!evalResult.valid && selectedDice.length > 0) return;
+
+      const currentScoreToAdd = gameState.playerTurn + evalResult.score;
+      gameState.playerTotal += currentScoreToAdd;
+      gameState.playerTurn = 0;
+
+      // Дейлик «Удачная рука»: 600 или более очков за один ход
+      raiseQuest('hand', currentScoreToAdd);
+
+      soundManager.playBank();
+      triggerHaptic('notification', 'success');
+
+      document.getElementById('comboText').textContent = `💰 Забрано +${currentScoreToAdd} очков в банк!`;
+      renderTable();
+
+      if (currentScoreToAdd > 0) {
+        spawnFloatScore('+' + currentScoreToAdd, document.getElementById('keptDiceArea'));
+      }
+
+      if (gameState.playerTotal >= TARGET_SCORE) {
+        handleGameOver(true);
+      } else {
+        setTimeout(startAITurn, 1000);
+      }
+    }
+
+    function handleDieClick(id) {
+      if (matchState !== 'playing' || gameState.currentTurn !== 'player' || gameState.isRolling) return;
+
+      const die = gameState.dice.find(d => d.id === id);
+      if (!die) return;
+
+      if (die.state === 'rolled') {
+        die.state = 'selected';
+        soundManager.playSelect();
+        triggerHaptic('impact', 'light');
+      } else if (die.state === 'selected') {
+        die.state = 'rolled';
+        soundManager.playSelect();
+        triggerHaptic('impact', 'light');
+      }
+
+      const selectedDice = gameState.dice.filter(d => d.state === 'selected');
+      const evalResult = evaluateDiceSelection(selectedDice.map(d => d.value));
+
+      const comboText = document.getElementById('comboText');
+      if (selectedDice.length === 0) {
+        comboText.textContent = 'Выберите призовые кости';
+      } else if (evalResult.valid) {
+        comboText.textContent = `Выбрано: +${evalResult.score} очков! (${evalResult.comboName})`;
+      } else {
+        comboText.textContent = '⚠️ ' + evalResult.comboName;
+      }
+
+      renderTable();
+
+      if (selectedDice.length > 0 && evalResult.valid && evalResult.score > 0) {
+        spawnFloatScore('+' + evalResult.score, document.getElementById('rolledDiceArea'));
+      }
+    }
+
+    /* ==========================================================================
+       2g. AI decision making — у каждого соперника свой стиль
+       ========================================================================== */
+    function aiDecideBank(turnScore, totalScore, remainingDice) {
+      const style = currentOpponent ? currentOpponent.styleType : 'balanced';
+      const playerLead = gameState.playerTotal - gameState.aiTotal;
+      const toTarget = TARGET_SCORE - totalScore;
+
+      if (totalScore >= TARGET_SCORE) return true;   // победный банк
+      if (remainingDice === 0) return false;         // Горячие кости — бросаем снова
+
+      switch (style) {
+        case 'reckless':
+          // Конюх Сивка: кидает кости даже при высоком риске, пока не наберёт 500+ за ход
+          if (turnScore >= 500) return true;
+          if (turnScore >= 300 && remainingDice <= 1) return true;
+          return false;
+
+        case 'balanced':
+          // Голодный Игнат: забирает банк от 300–350 очков или при 1–2 оставшихся кубиках
+          if (turnScore >= 320) return true;
+          if (remainingDice <= 2 && turnScore >= 200) return true;
+          if (remainingDice <= 1) return true;
+          if (toTarget <= 300 && turnScore >= toTarget) return true;
+          return false;
+
+        case 'cautious': {
+          // Гусельник Яшка: играет надёжно, рискует только если отстаёт по очкам
+          const behind = playerLead > 250;
+          if (turnScore >= (behind ? 450 : 280)) return true;
+          if (remainingDice <= 2) return true;
+          if (!behind && remainingDice <= 4 && turnScore >= 200) return true;
+          if (toTarget <= 300 && turnScore >= toTarget) return true;
+          return false;
+        }
+
+        case 'gambler': {
+          // Седой Ловчий: агрессивен в концовке
+          const endgame = totalScore >= 1300 || remainingDice <= 2;
+          if (turnScore >= (endgame ? 600 : 400)) return true;
+          if (toTarget <= 450 && turnScore >= toTarget) return true;
+          return false;
+        }
+
+        default:
+          return turnScore >= 300;
+      }
+    }
+
+    /* ==========================================================================
+       6. AI Strategy Logic (стиль зависит от выбранного соперника)
+       ========================================================================== */
+    function startAITurn() {
+      if (matchState !== 'playing') return;
+
+      const name = currentOpponent ? currentOpponent.name : 'Соперник';
+      gameState.currentTurn = 'ai';
+      gameState.aiTurn = 0;
+      gameState.dice = [];
+      document.getElementById('aiStatusText').textContent = `${name} размышляет…`;
+      document.getElementById('comboText').textContent = `Ход соперника: ${name}`;
+      renderTable();
+
+      setTimeout(executeRoll, 1000);
+    }
+
+    function processAITurn() {
+      if (matchState !== 'playing' || gameState.currentTurn !== 'ai') return;
+
+      const name = currentOpponent ? currentOpponent.name : 'Соперник';
+      const rolledDice = gameState.dice.filter(d => d.state === 'rolled');
+      const scoringDiceIds = selectOptimalDiceForAI(rolledDice);
+
+      scoringDiceIds.forEach(id => {
+        const d = gameState.dice.find(item => item.id === id);
+        if (d) d.state = 'selected';
+      });
+
+      const selectedDice = gameState.dice.filter(d => d.state === 'selected');
+      const evalResult = evaluateDiceSelection(selectedDice.map(d => d.value));
+
+      document.getElementById('comboText').textContent = `${name} взял +${evalResult.score} очков!`;
+      soundManager.playSelect();
+      renderTable();
+
+      if (evalResult.score > 0) {
+        spawnFloatScore('+' + evalResult.score, document.getElementById('keptDiceArea'));
+      }
+
+      const potentialTurnScore = gameState.aiTurn + evalResult.score;
+      const potentialTotalScore = gameState.aiTotal + potentialTurnScore;
+      const remainingCount = gameState.dice.filter(d => d.state !== 'banked' && d.state !== 'selected').length;
+
+      if (remainingCount === 0) {
+        sayOpponent('luck');
+        document.getElementById('aiStatusText').textContent = `${name}: Горячие кости! Бросает все шесть снова!`;
+        setTimeout(executeRoll, 1500);
+        return;
+      }
+
+      if (aiDecideBank(potentialTurnScore, potentialTotalScore, remainingCount)) {
+        document.getElementById('aiStatusText').textContent = `${name} забирает ${potentialTurnScore} в банк.`;
+        sayOpponent('bank');
+        setTimeout(() => bankAIPoints(potentialTurnScore), 1200);
+      } else {
+        document.getElementById('aiStatusText').textContent = `${name} рискует и бросает снова!`;
+        sayOpponent(evalResult.score >= 300 ? 'luck' : 'risky');
+        setTimeout(executeRoll, 1400);
+      }
+    }
+
+    function selectOptimalDiceForAI(rolledDice) {
+      const values = rolledDice.map(d => d.value);
+      const counts = [0,0,0,0,0,0,0];
+      values.forEach(v => counts[v]++);
+
+      const selectedIds = [];
+
+      if (rolledDice.length === 6) {
+        if (counts[1]===1 && counts[2]===1 && counts[3]===1 && counts[4]===1 && counts[5]===1 && counts[6]===1) {
+          return rolledDice.map(d => d.id);
+        }
+        const pairs = counts.filter(c => c === 2).length;
+        const quad = counts.filter(c => c === 4).length;
+        if (pairs === 3 || (quad === 1 && pairs === 1)) {
+          return rolledDice.map(d => d.id);
+        }
+      }
+
+      for (let val = 1; val <= 6; val++) {
+        if (counts[val] >= 3) {
+          const matching = rolledDice.filter(d => d.value === val);
+          matching.forEach(d => selectedIds.push(d.id));
+        }
+      }
+
+      rolledDice.forEach(d => {
+        if (!selectedIds.includes(d.id)) {
+          if (d.value === 1 || d.value === 5) {
+            selectedIds.push(d.id);
+          }
+        }
+      });
+
+      return selectedIds;
+    }
+
+    function bankAIPoints(turnScore) {
+      if (matchState !== 'playing') return;
+
+      gameState.aiTotal += turnScore;
+      gameState.aiTurn = 0;
+      soundManager.playBank();
+
+      renderTable();
+
+      if (gameState.aiTotal >= TARGET_SCORE) {
+        handleGameOver(false);
+      } else {
+        setTimeout(startPlayerTurn, 1000);
+      }
+    }
+
+    function handleGameOver(isPlayerWin) {
+      if (matchState !== 'playing') return;
+      matchState = 'over';
+
+      const opponent = currentOpponent;
+      const bet = opponent ? opponent.bet : 0;
+      const modal = document.getElementById('gameOverModal');
+      const title = document.getElementById('gameOverTitle');
+      const msg = document.getElementById('gameOverMessage');
+      const purse = document.getElementById('gameOverPurse');
+
+      // Дейлик «Разогрев в корчме»: любая сыгранная партия
+      bumpQuest('plays', 1);
+
+      if (isPlayerWin) {
+        winsCount++;
+        localStorage.setItem(STORAGE_KEYS.wins, String(winsCount));
+
+        // Дейлик «Гроза таверны»: победы над соперниками
+        bumpQuest('wins', 1);
+
+        const payout = bet * 2;   // при победе игрок забирает двойную ставку
+        addGold(payout, true);
+
+        title.textContent = '🎉 ВЫ ПОБЕДИЛИ!';
+        title.style.color = '#ffd700';
+        msg.innerHTML = `Поздравляем, <strong>${playerName}</strong>! Вы обыграли ` +
+          `<strong>${opponent.fullName}</strong> со счётом ` +
+          `<strong>${gameState.playerTotal}</strong> : ${gameState.aiTotal}.`;
+        purse.innerHTML = `<h4>💰 Кошель</h4>` +
+          `Победа: <strong>+${payout} грошей</strong> (ставка ${bet} × 2).<br>` +
+          `В кошеле теперь <strong>${gold}</strong> грошей.`;
+        triggerHaptic('notification', 'success');
+        sayOpponent('lose');
+      } else {
+        title.textContent = '💀 ПОРАЖЕНИЕ!';
+        title.style.color = '#ff3333';
+        msg.innerHTML = `<strong>${opponent.fullName}</strong> победил со счётом ` +
+          `<strong>${gameState.aiTotal}</strong> : ${gameState.playerTotal}.`;
+        purse.innerHTML = `<h4>💰 Кошель</h4>` +
+          `Ставка <strong>${bet}</strong> грошей досталась сопернику.<br>` +
+          `В кошеле осталось <strong>${gold}</strong> грошей.`;
+        triggerHaptic('notification', 'error');
+        sayOpponent('win');
+      }
+
+      renderQuestBadge();
+      updateHeader();
+      modal.classList.add('active');
+    }
+
+    /* ==========================================================================
+       7. UI Event Wiring & Bootstrap
+       ========================================================================== */
+    document.getElementById('rollBtn').addEventListener('click', () => {
+      soundManager.init();
+      executeRoll();
+    });
+
+    document.getElementById('bankBtn').addEventListener('click', () => {
+      soundManager.init();
+      bankPoints();
+    });
+
+    document.getElementById('muteBtn').addEventListener('click', () => {
+      soundManager.init();
+      const isMuted = soundManager.toggleMute();
+      document.getElementById('muteBtn').textContent = isMuted ? '🔇' : '🔊';
+    });
+
+    document.getElementById('backToTavernBtn').addEventListener('click', () => {
+      soundManager.init();
+      leaveTable();
+    });
+
+    document.getElementById('rulesBtnTavern').addEventListener('click', () => {
+      soundManager.init();
+      document.getElementById('rulesModal').classList.add('active');
+    });
+
+    document.getElementById('closeRulesBtn').addEventListener('click', () => {
+      document.getElementById('rulesModal').classList.remove('active');
+    });
+
+    document.getElementById('questsBtn').addEventListener('click', () => {
+      soundManager.init();
+      renderQuests();
+      document.getElementById('questsModal').classList.add('active');
+    });
+
+    document.getElementById('closeQuestsBtn').addEventListener('click', () => {
+      document.getElementById('questsModal').classList.remove('active');
+      renderTavern();
+    });
+
+    // Обустройство двора (Пропуск в Сезон 2)
+    document.getElementById('upgradeBtn').addEventListener('click', () => {
+      soundManager.init();
+      renderUpgrades();
+      document.getElementById('upgradeModal').classList.add('active');
+    });
+
+    document.getElementById('closeUpgradeBtn').addEventListener('click', () => {
+      document.getElementById('upgradeModal').classList.remove('active');
+      renderTavern();
+    });
+
+    // Лавка особых костей
+    document.getElementById('diceShopBtn').addEventListener('click', () => {
+      soundManager.init();
+      renderDiceShop();
+      document.getElementById('diceShopModal').classList.add('active');
+    });
+
+    document.getElementById('closeDiceShopBtn').addEventListener('click', () => {
+      document.getElementById('diceShopModal').classList.remove('active');
+      renderTavern();
+    });
+
+    document.getElementById('begBtn').addEventListener('click', () => {
+      soundManager.init();
+      addGold(20, true);
+      triggerHaptic('notification', 'success');
+      showToast('Сердобольный путник подал 20 грошей. Спасибо!');
+    });
+
+    document.getElementById('confirmOkBtn').addEventListener('click', () => {
+      const action = confirmAction;
+      closeConfirm();
+      if (typeof action === 'function') action();
+    });
+
+    document.getElementById('confirmCancelBtn').addEventListener('click', () => {
+      closeConfirm();
+    });
+
+    document.getElementById('rematchBtn').addEventListener('click', () => {
+      const opponent = currentOpponent;
+      document.getElementById('gameOverModal').classList.remove('active');
+      if (!opponent) { goToTavern(); return; }
+      if (gold < opponent.bet) {
+        showToast(`На реванш нужно ${opponent.bet} грошей, а в кошеле лишь ${gold}.`);
+        goToTavern();
+        return;
+      }
+      startMatch(opponent);
+    });
+
+    document.getElementById('toTavernBtn').addEventListener('click', () => {
+      document.getElementById('gameOverModal').classList.remove('active');
+      goToTavern();
+    });
+
+    // Bootstrap: игра открывается на главном экране — постоялый двор «Три Гроша»
+    applyUpgrades();
+    updateHeader();
+    renderTavern();
+    renderTable();
+    showScreen('tavern');
+  </script>
+</body>
+</html>
