@@ -705,6 +705,27 @@
       opacity: 0.9;
     }
 
+    /* Кости, зафиксированные на предыдущих бросках хода (lockedDice) */
+    .die.locked {
+      cursor: not-allowed;
+      opacity: 0.8;
+      transform: scale(0.95);
+      background: linear-gradient(145deg, #e6ded0 0%, #c8bfa9 100%);
+      border: 1px solid #8b6b3e;
+      box-shadow:
+        0 4px 10px rgba(0, 0, 0, 0.55),
+        inset 0 2px 3px rgba(255, 255, 255, 0.7),
+        inset 0 -3px 6px rgba(90, 74, 50, 0.5);
+      animation: none;
+    }
+
+    /* Двойная рамка «запломбированной» кости */
+    .die.locked::after {
+      box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.3),
+        inset 0 0 0 3px rgba(139, 107, 62, 0.4);
+    }
+
     .pip {
       width: 9px;
       height: 9px;
@@ -944,6 +965,9 @@
       font-family: 'Cinzel', serif;
       font-weight: 700;
       font-size: 14px;
+      line-height: 1.25;
+      max-width: 100%;
+      padding: 0 4px;
       color: #ffd700;
       text-shadow: 0 2px 4px rgba(0,0,0,0.9);
       animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -1879,7 +1903,7 @@
 
       <!-- Kept/Selected Dice Zone -->
       <div class="kept-area">
-        <div class="table-section-title" style="margin-bottom: 6px;">Отложенные кости текущего хода</div>
+        <div class="table-section-title" style="margin-bottom: 6px;">Отложенные кости (заблокированы)</div>
         <div class="dice-area" id="keptDiceArea"></div>
       </div>
     </main>
@@ -3229,8 +3253,38 @@
       aiTurn: 0,
       currentTurn: 'player', // 'player' | 'ai'
       isRolling: false,
-      dice: [] // Array of { id, value, state: 'rolled' | 'selected' | 'banked' }
+      // Кости ТЕКУЩЕГО броска (всегда кликабельны для игрока):
+      // Array of { id, value, special, state: 'rolled' | 'selected' }
+      dice: [],
+      // Кости, зафиксированные на ПРЕДЫДУЩИХ бросках этого хода (state: 'banked').
+      // Их нельзя снять с выделения, и они НЕ объединяются в комбинации
+      // с костями нового броска.
+      lockedDice: [],
+      // Сколько костей уже выпало за текущий ход (для набора особых костей)
+      rolledThisTurn: 0
     };
+
+    // Сквозной счётчик id: гарантирует уникальность каждой кости между бросками
+    // (раньше id брались от длины массива, что давало дубли и «мёртвые» клики)
+    let dieIdCounter = 0;
+
+    // Кости, выбранные игроком ТОЛЬКО из текущего броска
+    function getSelectedDice() {
+      return gameState.dice.filter(d => d.state === 'selected');
+    }
+
+    // Перенос выбранных костей текущего броска в отложенные (lockedDice)
+    function lockSelectedDice() {
+      getSelectedDice().forEach(die => {
+        gameState.lockedDice.push({
+          id: die.id,
+          value: die.value,
+          special: die.special,
+          state: 'banked'
+        });
+      });
+      gameState.dice = gameState.dice.filter(d => d.state !== 'selected');
+    }
 
     // Счёт партии живёт в gameState; экономика и победы — в updateHeader().
 
@@ -3249,9 +3303,13 @@
         el.appendChild(pip);
       }
 
-      if (!isAI && gameState.currentTurn === 'player' && dieObj.state === 'rolled') {
-        el.addEventListener('click', () => handleDieClick(dieObj.id));
-      } else if (!isAI && gameState.currentTurn === 'player' && dieObj.state === 'selected') {
+      const isLocked = dieObj.state === 'banked';
+
+      if (isLocked) {
+        // Отложенные кости с прошлых бросков — заблокированы и не кликаются
+        el.classList.add('locked', 'disabled');
+      } else if (!isAI && gameState.currentTurn === 'player') {
+        // ВСЕ кости текущего броска можно свободно выделять и снимать выделение
         el.addEventListener('click', () => handleDieClick(dieObj.id));
       } else {
         el.classList.add('disabled');
@@ -3268,13 +3326,14 @@
 
       const isAI = gameState.currentTurn === 'ai';
 
+      // Кости текущего броска (и брошенные, и выбранные) остаются на столе
       gameState.dice.forEach(dieObj => {
-        const el = createDiceElement(dieObj, isAI);
-        if (dieObj.state === 'rolled') {
-          rolledArea.appendChild(el);
-        } else if (dieObj.state === 'selected' || dieObj.state === 'banked') {
-          keptArea.appendChild(el);
-        }
+        rolledArea.appendChild(createDiceElement(dieObj, isAI));
+      });
+
+      // Кости, отложенные на предыдущих бросках этого хода — в зоне отложенных
+      gameState.lockedDice.forEach(dieObj => {
+        keptArea.appendChild(createDiceElement(dieObj, isAI));
       });
 
       document.getElementById('playerTotalScore').textContent = gameState.playerTotal;
@@ -3298,34 +3357,53 @@
       updateControls();
     }
 
+    // Пауза после зонка: пока показывается «ЗОНК!», кости и кнопки не трогаем
+    function isZonkPause() {
+      return document.getElementById('zonkOverlay').classList.contains('active');
+    }
+
     function updateControls() {
       const rollBtn = document.getElementById('rollBtn');
       const bankBtn = document.getElementById('bankBtn');
 
-      if (matchState !== 'playing' || gameState.currentTurn !== 'player' || gameState.isRolling) {
+      if (matchState !== 'playing' || gameState.currentTurn !== 'player' || gameState.isRolling || isZonkPause()) {
         rollBtn.disabled = true;
         bankBtn.disabled = true;
         return;
       }
 
-      const selectedDice = gameState.dice.filter(d => d.state === 'selected');
+      // Первый бросок хода: стол пуст и отложенных костей ещё нет
+      if (gameState.dice.length === 0 && gameState.lockedDice.length === 0) {
+        rollBtn.disabled = false;
+        bankBtn.disabled = true;
+        return;
+      }
+
+      // Валидация считается ТОЛЬКО по костям текущего броска (selectedDice)
+      const selectedDice = getSelectedDice();
       const evalResult = evaluateDiceSelection(selectedDice.map(d => d.value));
+      const selectionValid = selectedDice.length > 0 && evalResult.valid && evalResult.score > 0;
 
-      const isInitialRollOfTurn = gameState.dice.length === 0;
+      // Нет собранной комбинации — кнопки неактивны, но клики по костям свободны
+      rollBtn.disabled = !selectionValid;
+      bankBtn.disabled = !selectionValid || (gameState.playerTurn + evalResult.score) <= 0;
+    }
 
-      if (isInitialRollOfTurn) {
-        rollBtn.disabled = false;
-        bankBtn.disabled = true;
+    // Мягкая подсказка о текущем выборе (никогда не блокирует клики по костям)
+    function updateSelectionHint() {
+      const comboText = document.getElementById('comboText');
+      const selectedDice = getSelectedDice();
+
+      if (selectedDice.length === 0) {
+        comboText.textContent = 'Выберите кости: 1, 5 или три одинаковых';
         return;
       }
 
-      if (selectedDice.length > 0 && evalResult.valid) {
-        rollBtn.disabled = false;
-        const totalTurnAfterBank = gameState.playerTurn + evalResult.score;
-        bankBtn.disabled = totalTurnAfterBank <= 0;
+      const evalResult = evaluateDiceSelection(selectedDice.map(d => d.value));
+      if (evalResult.valid && evalResult.score > 0) {
+        comboText.textContent = `Выбрано: +${evalResult.score} очков (${evalResult.comboName})`;
       } else {
-        rollBtn.disabled = true;
-        bankBtn.disabled = true;
+        comboText.textContent = 'Неполная комбинация — докликайте призовые кости';
       }
     }
     /* ==========================================================================
@@ -3390,6 +3468,8 @@
       gameState.aiTotal = 0;
       gameState.aiTurn = 0;
       gameState.dice = [];
+      gameState.lockedDice = [];
+      gameState.rolledThisTurn = 0;
       gameState.isRolling = false;
       gameState.currentTurn = 'player';
       document.getElementById('zonkOverlay').classList.remove('active');
@@ -3462,6 +3542,8 @@
       gameState.currentTurn = 'player';
       gameState.playerTurn = 0;
       gameState.dice = [];
+      gameState.lockedDice = [];
+      gameState.rolledThisTurn = 0;
       document.getElementById('aiStatusText').textContent = 'Ваш ход! Бросьте кости.';
       document.getElementById('comboText').textContent = 'Нажмите «Бросить кости»';
       renderTable();
@@ -3494,40 +3576,62 @@
       return Math.floor(Math.random() * 6) + 1;
     }
 
+    // Переброс оставшихся на столе костей.
+    // Все выбранные кости (selectedDice) текущего броска переносятся в lockedDice,
+    // а их очки прибавляются к очкам текущего хода.
     function executeRoll() {
-      if (gameState.isRolling || matchState !== 'playing') return;
+      if (gameState.isRolling || matchState !== 'playing' || isZonkPause()) return;
+
+      const isPlayer = gameState.currentTurn === 'player';
+      const isFirstRollOfTurn = gameState.dice.length === 0 && gameState.lockedDice.length === 0;
+      const selectedDice = getSelectedDice();
+
+      // Перебрасывать можно только отложив призовые кости (кроме первого броска хода)
+      if (!isFirstRollOfTurn && selectedDice.length === 0) {
+        updateSelectionHint();
+        updateControls();
+        return;
+      }
+
       gameState.isRolling = true;
       updateControls();
 
       soundManager.playRoll();
       triggerHaptic('impact', 'medium');
 
-      const selectedDice = gameState.dice.filter(d => d.state === 'selected');
+      // 1. Откладываем выбранные кости: их очки идут в копилку текущего хода
       if (selectedDice.length > 0) {
         const evalResult = evaluateDiceSelection(selectedDice.map(d => d.value));
-        if (evalResult.valid) {
-          if (gameState.currentTurn === 'player') {
+        if (evalResult.valid && evalResult.score > 0) {
+          if (isPlayer) {
             gameState.playerTurn += evalResult.score;
           } else {
             gameState.aiTurn += evalResult.score;
           }
         }
-        selectedDice.forEach(d => d.state = 'banked');
+        lockSelectedDice();
       }
 
-      const unbankedCount = gameState.dice.filter(d => d.state !== 'banked').length;
-      let diceToRollCount = unbankedCount;
+      // 2. Перебрасываем только то, что осталось на столе
+      let diceToRollCount = gameState.dice.length;
       let hotDice = false;
 
-      if (gameState.dice.length === 0 || unbankedCount === 0) {
-        diceToRollCount = 6;
-        hotDice = gameState.dice.length > 0;
-        gameState.dice = [];
-        document.getElementById('comboText').textContent = '🔥 ГОРЯЧИЕ КОСТИ! Все 6 кубиков снова в игре!';
+      if (diceToRollCount === 0) {
+        if (gameState.lockedDice.length === 0) {
+          diceToRollCount = 6;   // первый бросок хода — все шесть костей
+        } else {
+          // ГОРЯЧИЕ КОСТИ: все шесть костей задействованы — полный переброс
+          hotDice = true;
+          diceToRollCount = 6;
+          gameState.lockedDice = [];
+          gameState.rolledThisTurn = 0;
+          document.getElementById('comboText').textContent = '🔥 ГОРЯЧИЕ КОСТИ! Все 6 кубиков снова в игре!';
+        }
       }
 
       const rolledArea = document.getElementById('rolledDiceArea');
       rolledArea.innerHTML = '';
+      if (hotDice) document.getElementById('keptDiceArea').innerHTML = '';
       for (let i = 0; i < diceToRollCount; i++) {
         const placeholder = document.createElement('div');
         placeholder.className = 'die rolling';
@@ -3536,20 +3640,23 @@
 
       setTimeout(() => {
         const newDice = [];
-        const startId = gameState.dice.length;
-        const playerDiceSet = gameState.currentTurn === 'player' ? getPlayerDiceSet() : null;
+        const playerDiceSet = isPlayer ? getPlayerDiceSet() : null;
+
         for (let i = 0; i < diceToRollCount; i++) {
-          const slot = playerDiceSet ? playerDiceSet[(startId + i) % DICE_SET_SIZE] : null;
+          const slot = playerDiceSet
+            ? playerDiceSet[(gameState.rolledThisTurn + i) % DICE_SET_SIZE]
+            : null;
           newDice.push({
-            id: startId + i,
+            id: ++dieIdCounter,   // уникальный id — кости больше не «слипаются»
             value: rollDieValue(slot),
             special: slot,
             state: 'rolled'
           });
         }
+        gameState.rolledThisTurn += diceToRollCount;
 
-        const bankedDice = gameState.dice.filter(d => d.state === 'banked');
-        gameState.dice = [...bankedDice, ...newDice];
+        // На столе только кости нового броска — отложенные лежат в lockedDice
+        gameState.dice = newDice;
         gameState.isRolling = false;
 
         if (matchState !== 'playing') return;
@@ -3560,14 +3667,17 @@
         if (!hasScoring) {
           handleZonk();
         } else {
-          if (gameState.currentTurn === 'player') {
-            document.getElementById('comboText').textContent = hotDice
-              ? '🔥 Горячие кости! Выберите призовые кости'
-              : 'Выберите кости для сохранения';
+          if (isPlayer) {
+            if (hotDice) {
+              document.getElementById('comboText').textContent =
+                '🔥 Горячие кости! Снова выбирайте призовые кости';
+            } else {
+              updateSelectionHint();
+            }
           }
           renderTable();
 
-          if (gameState.currentTurn === 'ai') {
+          if (!isPlayer) {
             setTimeout(processAITurn, 1200);
           }
         }
@@ -3605,9 +3715,19 @@
     function bankPoints() {
       if (matchState !== 'playing' || gameState.currentTurn !== 'player') return;
 
-      const selectedDice = gameState.dice.filter(d => d.state === 'selected');
+      // В банк уходит только валидная комбинация, собранная из костей ТЕКУЩЕГО броска
+      const selectedDice = getSelectedDice();
       const evalResult = evaluateDiceSelection(selectedDice.map(d => d.value));
-      if (!evalResult.valid && selectedDice.length > 0) return;
+      const selectionValid = selectedDice.length > 0 && evalResult.valid && evalResult.score > 0;
+      if (!selectionValid) {
+        updateSelectionHint();
+        return;
+      }
+
+      // Выбранные кости фиксируются — весь ход виден в зоне отложенных костей
+      lockSelectedDice();
+      // Ход завершён: неиспользованные кости со стола убираем
+      gameState.dice = [];
 
       const currentScoreToAdd = gameState.playerTurn + evalResult.score;
       gameState.playerTotal += currentScoreToAdd;
@@ -3633,36 +3753,24 @@
       }
     }
 
+    // Клик по кости ТЕКУЩЕГО броска: свободно выделяем и снимаем выделение.
+    // Клики никогда не блокируются — валидность комбинации проверяется отдельно.
     function handleDieClick(id) {
-      if (matchState !== 'playing' || gameState.currentTurn !== 'player' || gameState.isRolling) return;
+      if (matchState !== 'playing' || gameState.currentTurn !== 'player' || gameState.isRolling || isZonkPause()) return;
 
+      // Ищем только среди костей текущего броска — отложенные (lockedDice) недоступны
       const die = gameState.dice.find(d => d.id === id);
       if (!die) return;
 
-      if (die.state === 'rolled') {
-        die.state = 'selected';
-        soundManager.playSelect();
-        triggerHaptic('impact', 'light');
-      } else if (die.state === 'selected') {
-        die.state = 'rolled';
-        soundManager.playSelect();
-        triggerHaptic('impact', 'light');
-      }
-
-      const selectedDice = gameState.dice.filter(d => d.state === 'selected');
-      const evalResult = evaluateDiceSelection(selectedDice.map(d => d.value));
-
-      const comboText = document.getElementById('comboText');
-      if (selectedDice.length === 0) {
-        comboText.textContent = 'Выберите призовые кости';
-      } else if (evalResult.valid) {
-        comboText.textContent = `Выбрано: +${evalResult.score} очков! (${evalResult.comboName})`;
-      } else {
-        comboText.textContent = '⚠️ ' + evalResult.comboName;
-      }
+      die.state = (die.state === 'selected') ? 'rolled' : 'selected';
+      soundManager.playSelect();
+      triggerHaptic('impact', 'light');
 
       renderTable();
+      updateSelectionHint();
 
+      const selectedDice = getSelectedDice();
+      const evalResult = evaluateDiceSelection(selectedDice.map(d => d.value));
       if (selectedDice.length > 0 && evalResult.valid && evalResult.score > 0) {
         spawnFloatScore('+' + evalResult.score, document.getElementById('rolledDiceArea'));
       }
@@ -3727,6 +3835,8 @@
       gameState.currentTurn = 'ai';
       gameState.aiTurn = 0;
       gameState.dice = [];
+      gameState.lockedDice = [];
+      gameState.rolledThisTurn = 0;
       document.getElementById('aiStatusText').textContent = `${name} размышляет…`;
       document.getElementById('comboText').textContent = `Ход соперника: ${name}`;
       renderTable();
@@ -3754,12 +3864,13 @@
       renderTable();
 
       if (evalResult.score > 0) {
-        spawnFloatScore('+' + evalResult.score, document.getElementById('keptDiceArea'));
+        spawnFloatScore('+' + evalResult.score, document.getElementById('rolledDiceArea'));
       }
 
       const potentialTurnScore = gameState.aiTurn + evalResult.score;
       const potentialTotalScore = gameState.aiTotal + potentialTurnScore;
-      const remainingCount = gameState.dice.filter(d => d.state !== 'banked' && d.state !== 'selected').length;
+      // На столе остаются только невыбранные кости текущего броска
+      const remainingCount = gameState.dice.filter(d => d.state !== 'selected').length;
 
       if (remainingCount === 0) {
         sayOpponent('luck');
@@ -3817,6 +3928,10 @@
 
     function bankAIPoints(turnScore) {
       if (matchState !== 'playing') return;
+
+      // Соперник забирает очки: его выбранные кости становятся отложенными
+      lockSelectedDice();
+      gameState.dice = [];
 
       gameState.aiTotal += turnScore;
       gameState.aiTurn = 0;
