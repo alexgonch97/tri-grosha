@@ -414,7 +414,9 @@
 
   <script src="sound.js"></script>
   <!-- Промокоды Сезона 1: словарь window.SEASON_PROMOS строго перед game.js -->
-  <script src="promos.js"></script>
+  <script>
+    document.write('<script src="promos.js?v=' + Date.now() + '"><\/script>');
+  </script>
   <script src="game.js"></script>
 </body>
 </html>
