@@ -8,7 +8,7 @@
    Пока в адресе стоит YOUR_SUBDOMAIN — игра работает в офлайн-режиме:
    все вызовы сети аккуратно пропускаются, интерфейс остаётся рабочим.
    -------------------------------------------------------------------------- */
-const REF_API_URL = 'https://trigrosha-ref.YOUR_SUBDOMAIN.workers.dev';
+const REF_API_URL = 'https://trigrosha-ref.alalalgogogo.workers.dev';
 function isRefApiReady() {
   return typeof REF_API_URL === 'string' && REF_API_URL.length > 0 && !REF_API_URL.includes('YOUR_SUBDOMAIN');
 }
