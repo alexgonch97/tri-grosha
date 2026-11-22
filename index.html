@@ -413,9 +413,24 @@
 
 
   <script src="sound.js"></script>
-  <!-- Промокоды Сезона 1: словарь window.SEASON_PROMOS строго перед game.js -->
+  <!-- Промокоды Сезона 1: словарь window.SEASON_PROMOS строго перед game.js.
+       Файл подключается с меткой времени (?v=Date.now()), чтобы при старте
+       страницы не подхватился старый кэш. Если загрузка не удалась — остаётся
+       пустой словарь {}, игра продолжает работать, а свежие коды из promos.js
+       game.js подтянет сам при открытии окна «Промокоды». -->
   <script>
-    document.write('<script src="promos.js?v=' + Date.now() + '"><\/script>');
+    window.SEASON_PROMOS = window.SEASON_PROMOS || {};
+    (function () {
+      var promoUrl = 'promos.js?v=' + Date.now();
+      try {
+        document.write('<script src="' + promoUrl + '"><\/script>');
+      } catch (e) {
+        var promoScript = document.createElement('script');
+        promoScript.src = promoUrl;
+        promoScript.async = false;
+        (document.head || document.getElementsByTagName('head')[0]).appendChild(promoScript);
+      }
+    })();
   </script>
   <script src="game.js"></script>
 </body>

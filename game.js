@@ -187,8 +187,48 @@ function buyDice(id){const t=DICE_TYPES[id];if(!t||ownedDice.includes(id))return
 function equipDice(id,equip){const t=DICE_TYPES[id];if(!t)return;if(equip){if(!ownedDice.includes(id)||equippedDice.includes(id))return;if(equippedDice.length>=MAX_SPECIAL_DICE){showToast('В наборе уже '+MAX_SPECIAL_DICE+' особых костей.');triggerHaptic('notification','warning');return;}equippedDice.push(id);showToast('«'+t.name+'» — в наборе.');}else{equippedDice=equippedDice.filter(item=>item!==id);showToast('«'+t.name+'» — из набора убрана.');}saveDice();soundManager.init();soundManager.playSelect();triggerHaptic('impact','light');renderDiceShop();}
 /* --------------------------------------------------------------------------
    2j. Сезон 1: Промокоды (словарь подключается файлом promos.js → window.SEASON_PROMOS)
+   Словарь больше не копируется в константу: currentPromoCodes() всегда читает
+   актуальный window.SEASON_PROMOS, а refreshSeasonPromos(true) подгружает свежий
+   promos.js?t=Date.now(). Поэтому новые коды из promos.js работают без
+   перезапуска приложения и без правок game.js.
    -------------------------------------------------------------------------- */
-const PROMO_CODES = window.SEASON_PROMOS || {};
+const PROMO_SCRIPT_URL = 'promos.js';
+const PROMO_SCRIPT_TIMEOUT = 6000;   // мс на попытку подгрузить свежий словарь кодов
+let promoReloadSeq = 0;              // защита от гонок при нескольких перезагрузках подряд
+function currentPromoCodes() {
+  const dict = window.SEASON_PROMOS;
+  return (dict && typeof dict === 'object') ? dict : {};
+}
+function normalizePromoCode(rawCode) { return String(rawCode == null ? '' : rawCode).trim().toUpperCase(); }
+/* Свежий promos.js: динамический <script> с меткой времени, onload/onerror и таймаутом.
+   forceReload=false — отдаём уже загруженный словарь, сеть не дёргаем.
+   Сеть/файл недоступны — мягко откатываемся на прежний window.SEASON_PROMOS,
+   интерфейс при этом не ломается. */
+function refreshSeasonPromos(forceReload = false) {
+  if (!forceReload) return Promise.resolve(currentPromoCodes());
+  return new Promise((resolve) => {
+    const seq = ++promoReloadSeq;
+    const previous = currentPromoCodes();
+    let settled = false, timer = null;
+    const script = document.createElement('script');
+    const finish = (loadedOk) => {
+      if (settled) return;
+      settled = true;
+      if (timer) { clearTimeout(timer); timer = null; }
+      try { script.remove(); } catch (e) {}
+      // Откат только если это всё ещё последняя попытка и файл реально не загрузился
+      if (!loadedOk && seq === promoReloadSeq && Object.keys(previous).length) window.SEASON_PROMOS = previous;
+      resolve(currentPromoCodes());
+    };
+    script.src = PROMO_SCRIPT_URL + '?t=' + Date.now();
+    script.async = true;
+    script.onload = () => finish(true);
+    script.onerror = () => finish(false);
+    script.onabort = () => finish(false);
+    timer = setTimeout(() => finish(false), PROMO_SCRIPT_TIMEOUT);
+    try { document.head.appendChild(script); } catch (e) { finish(false); }
+  });
+}
 const REFERRAL_LINK_BASE = 'https://t.me/tri_grosha_game_bot/PlayTriGrosha?startapp=ref_';
 let redeemedPromos = loadStringArray(STORAGE_KEYS.promos);
 function savePromoState() { const raw = JSON.stringify(redeemedPromos); try { localStorage.setItem(STORAGE_KEYS.promos, raw); } catch (e) {} cloudSet(STORAGE_KEYS.promos, raw); }
@@ -233,15 +273,55 @@ let friendsState = loadFriendsState();
 function saveFriendsState() { const raw = JSON.stringify(friendsState); try { localStorage.setItem(STORAGE_KEYS.friends, raw); } catch (e) {} cloudSet(STORAGE_KEYS.friends, raw); }
 function referralLink() { return REFERRAL_LINK_BASE + friendsState.code; }
 saveFriendsState();
-function redeemPromo(rawCode) {
-  const code = String(rawCode || '').trim().toUpperCase();
+/* Уже активированные игроком коды: локальный список (localStorage) + Telegram CloudStorage.
+   Один и тот же код нельзя активировать дважды даже на другом устройстве;
+   если облако не отвечает — мягко проверяем по локальному списку. */
+function usedPromoCodes() {
+  return new Promise((resolve) => {
+    const local = (Array.isArray(redeemedPromos) ? redeemedPromos : []);
+    let settled = false, timer = null;
+    const finish = (raw) => {
+      if (settled) return;
+      settled = true;
+      if (timer) { clearTimeout(timer); timer = null; }
+      let cloud = [];
+      try { const parsed = JSON.parse(raw || '[]'); if (Array.isArray(parsed)) cloud = parsed; } catch (e) { cloud = []; }
+      const merged = local.concat(cloud)
+        .map(normalizePromoCode)
+        .filter(c => c.length > 0)
+        .filter((c, i, arr) => arr.indexOf(c) === i);
+      // Коды, известные только облаку, запоминаем локально — защита сработает и без сети
+      let changed = false;
+      merged.forEach((c) => {
+        if (!local.some(x => normalizePromoCode(x) === c)) { redeemedPromos.push(c); changed = true; }
+      });
+      if (changed) savePromoState();
+      resolve(merged);
+    };
+    if (!cloudStorage) { finish('[]'); return; }
+    timer = setTimeout(() => finish(JSON.stringify(redeemedPromos)), 4000);
+    cloudGetItems([STORAGE_KEYS.promos], (data) => finish(data ? data[STORAGE_KEYS.promos] : '[]'));
+  });
+}
+/* Проверка кода: нормализация → свежий словарь window.SEASON_PROMOS → защита от повторной активации */
+async function redeemPromo(rawCode, forceReload = false) {
+  const code = normalizePromoCode(rawCode);
   if (!code) { showToast('Введите промокод.'); return false; }
-  if (!Object.prototype.hasOwnProperty.call(PROMO_CODES, code)) { showToast('Такого промокода Сезона 1 нет.'); triggerHaptic('notification', 'error'); return false; }
-  if (redeemedPromos.includes(code)) { showToast('Промокод «' + code + '» уже использован.'); triggerHaptic('notification', 'warning'); return false; }
+  // Перед проверкой кода подтягиваем свежий promos.js (forceReload=true → сеть)
+  const promos = await refreshSeasonPromos(forceReload);
+  const reward = Number(promos[code]);
+  if (!Object.prototype.hasOwnProperty.call(promos, code) || !Number.isFinite(reward) || reward <= 0) {
+    showToast('Такого промокода Сезона 1 нет.'); triggerHaptic('notification', 'error'); return false;
+  }
+  const used = await usedPromoCodes();
+  const localUsed = (Array.isArray(redeemedPromos) ? redeemedPromos : []).map(normalizePromoCode);
+  if (used.includes(code) || localUsed.includes(code)) {
+    showToast('Промокод «' + code + '» уже использован.'); triggerHaptic('notification', 'warning'); return false;
+  }
   redeemedPromos.push(code); savePromoState();
-  addGold(PROMO_CODES[code], true);
+  addGold(reward, true);
   triggerHaptic('notification', 'success');
-  showToast('Промокод «' + code + '» принят: +' + PROMO_CODES[code] + ' грошей!');
+  showToast('Промокод «' + code + '» принят: +' + reward + ' грошей!');
   renderPromoModal(); updateBegButton();
   return true;
 }
@@ -400,11 +480,17 @@ function copyReferralLink() {
     else fallback();
   } catch (e) { fallback(); }
 }
-function renderPromoModal() {
+function renderPromoCounters() {
   const counters = document.getElementById('promoCounters');
-  if (counters) counters.textContent = redeemedPromos.length
+  if (!counters) return;
+  const total = Object.keys(currentPromoCodes()).length;
+  counters.textContent = (redeemedPromos.length
     ? 'Активировано кодов Сезона 1: ' + redeemedPromos.length
-    : 'Пока не активировано ни одного кода.';
+    : 'Пока не активировано ни одного кода.')
+    + (total ? ' · Доступно кодов: ' + total : '');
+}
+function renderPromoModal() {
+  renderPromoCounters();
   const input = document.getElementById('promoInput'); if (input) input.value = '';
 }
 function renderFriendsModal() {
@@ -1235,11 +1321,32 @@ document.getElementById('upgradeBtn').addEventListener('click', () => { soundMan
 document.getElementById('closeUpgradeBtn').addEventListener('click', () => { document.getElementById('upgradeModal').classList.remove('active'); renderTavern(); });
 document.getElementById('diceShopBtn').addEventListener('click', () => { soundManager.init(); renderDiceShop(); document.getElementById('diceShopModal').classList.add('active'); });
 document.getElementById('closeDiceShopBtn').addEventListener('click', () => { document.getElementById('diceShopModal').classList.remove('active'); renderTavern(); });
-// Сезон 1: промокоды, друзья и достижения
-document.getElementById('promoBtn').addEventListener('click', () => { soundManager.init(); renderPromoModal(); document.getElementById('promoModal').classList.add('active'); });
+// Сезон 1: промокоды — свежий promos.js?t=Date.now() подтягивается и при открытии
+// окна, и перед каждой проверкой кода, поэтому новые коды работают без перезапуска.
+let promoCheckBusy = false;
+function submitPromoInput() {
+  const input = document.getElementById('promoInput');
+  const btn = document.getElementById('promoApplyBtn');
+  if (!input || promoCheckBusy) return;
+  promoCheckBusy = true;
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  redeemPromo(input.value, true)
+    .then((ok) => { if (ok) input.value = ''; })
+    .catch(() => {})
+    .finally(() => {
+      promoCheckBusy = false;
+      if (btn) { btn.disabled = false; btn.textContent = 'Ввести'; }
+    });
+}
+document.getElementById('promoBtn').addEventListener('click', () => {
+  soundManager.init(); renderPromoModal();
+  document.getElementById('promoModal').classList.add('active');
+  // Обновляем словарь кодов в фоне и показываем актуальное число доступных кодов
+  refreshSeasonPromos(true).then(() => renderPromoCounters());
+});
 document.getElementById('closePromoBtn').addEventListener('click', () => { document.getElementById('promoModal').classList.remove('active'); renderTavern(); });
-document.getElementById('promoApplyBtn').addEventListener('click', () => { const input = document.getElementById('promoInput'); if (redeemPromo(input.value)) input.value = ''; });
-document.getElementById('promoInput').addEventListener('keydown', (e) => { if (e.key !== 'Enter') return; const input = e.target; if (redeemPromo(input.value)) input.value = ''; });
+document.getElementById('promoApplyBtn').addEventListener('click', () => { soundManager.init(); submitPromoInput(); });
+document.getElementById('promoInput').addEventListener('keydown', (e) => { if (e.key !== 'Enter') return; submitPromoInput(); });
 // Открытие окна друзей НЕ дёргает сеть: синхронизация с сервером рефералов идёт
 // ровно один раз при старте игры и вручную — по кнопке «Ввести» (submitFriendCode).
 document.getElementById('friendsBtn').addEventListener('click', () => { soundManager.init(); renderFriendsModal(); document.getElementById('friendsModal').classList.add('active'); });
