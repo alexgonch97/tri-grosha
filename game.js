@@ -267,14 +267,16 @@ function applyServerReferralData(data) {
   if (typeof data.myCode === 'string' && /^TRG-\d{4}$/.test(data.myCode) && data.myCode !== friendsState.code) {
     friendsState.code = data.myCode; changed = true;
   }
-  const serverCount = Math.max(0, Math.min(parseInt(data.friendsCount, 10) || 0, MAX_FRIENDS));
-  const count = Math.max(friendsState.friends.length, serverCount);
+  // Сервер — источник истины: счётчик и массив друзей приводим напрямую по ответу сервера
+  const count = Math.max(0, Math.min(Math.floor(Number(data.friendsCount) || 0), MAX_FRIENDS));
   if (count !== friendsState.friendsCount) { friendsState.friendsCount = count; changed = true; }
   if (Array.isArray(data.friends)) {
     const codes = data.friends.filter(c => typeof c === 'string' && /^TRG-\d{4}$/.test(c))
       .filter((c, i, arr) => arr.indexOf(c) === i).slice(0, MAX_FRIENDS);
     if (codes.join(',') !== friendsState.friends.join(',')) { friendsState.friends = codes; changed = true; }
   }
+  // Сервер вернул 0 друзей — полностью очищаем старые локальные записи до-серверного периода
+  if (count === 0 && friendsState.friends.length) { friendsState.friends = []; changed = true; }
   if (Array.isArray(data.claimedMilestones)) {
     data.claimedMilestones.forEach(m => {
       const n = parseInt(m, 10);
@@ -375,7 +377,8 @@ function submitFriendCode() {
           syncReferralsWithServer();
         } else {
           triggerHaptic('notification', 'error');
-          showToast((data && data.message) ? String(data.message) : 'Сервер не принял этот код друга.');
+          // Точный текст ошибки от сервера (если он есть), иначе — общая заглушка
+          showToast((data && data.error) ? String(data.error) : 'Сервер не принял этот код друга.');
         }
       })
       .catch(() => { triggerHaptic('notification', 'error'); showToast('Сервер недоступен — попробуйте позже.'); });
@@ -448,12 +451,20 @@ function renderFriendsModal() {
       empty.textContent = 'Список друзей подтянется с сервера после синхронизации.';
       codeList.appendChild(empty);
     } else {
-      friendsState.friends.forEach(c => {
+      // Компактно: выводим только последние 5 записей, чтобы карточка не растягивалась по высоте
+      const total = friendsState.friends.length;
+      friendsState.friends.slice(-5).forEach(c => {
         const chip = document.createElement('span');
         chip.className = 'friend-chip';
         chip.textContent = c;
         codeList.appendChild(chip);
       });
+      if (total > 5) {
+        const more = document.createElement('span');
+        more.className = 'friend-chip friend-chip-more';
+        more.textContent = 'и ещё +' + (total - 5) + '...';
+        codeList.appendChild(more);
+      }
     }
   }
   const full = count >= MAX_FRIENDS;
@@ -720,7 +731,9 @@ function claimQuest(id){const q=QUESTS.find(q=>q.id===id);if(!q||!isQuestDone(q)
    4. Game State & Logic (FIX #1: unified dice model)
    -------------------------------------------------------------------------- */
 const TARGET_SCORE = 2000;
-let gameState = { playerTotal:0, playerTurn:0, aiTotal:0, aiTurn:0, currentTurn:'player', isRolling:false, dice:[], rolledThisTurn:0 };
+// playerTurnDice — «замороженный» на весь ход игрока набор из 6 кубиков вместе с их
+// типами (special). Создаётся ровно один раз за ход; при перебросе меняется только value.
+let gameState = { playerTotal:0, playerTurn:0, aiTotal:0, aiTurn:0, currentTurn:'player', isRolling:false, dice:[], rolledThisTurn:0, playerTurnDice:null };
 let dieIdCounter = 0;
 function getTableDice()    { return gameState.dice.filter(d => d.state === 'table'); }
 function getSelectedDice() { return gameState.dice.filter(d => d.state === 'selected'); }
@@ -793,7 +806,7 @@ let currentOpponent = null;
 let matchState = 'tavern'; // 'tavern' | 'playing' | 'over'
 
 function showScreen(name) { document.getElementById('tavernScreen').classList.toggle('active', name === 'tavern'); document.getElementById('gameScreen').classList.toggle('active', name === 'game'); }
-function resetBoard() { gameState.playerTotal=0;gameState.playerTurn=0;gameState.aiTotal=0;gameState.aiTurn=0;gameState.dice=[];gameState.rolledThisTurn=0;gameState.isRolling=false;gameState.currentTurn='player';document.getElementById('zonkOverlay').classList.remove('active');renderTable();}
+function resetBoard() { gameState.playerTotal=0;gameState.playerTurn=0;gameState.aiTotal=0;gameState.aiTurn=0;gameState.dice=[];gameState.playerTurnDice=null;gameState.rolledThisTurn=0;gameState.isRolling=false;gameState.currentTurn='player';document.getElementById('zonkOverlay').classList.remove('active');renderTable();}
 function goToTavern() { matchState='tavern';currentOpponent=null;hideSpeech();clearNpcSelection();document.getElementById('gameOverModal').classList.remove('active');resetBoard();showScreen('tavern');clearActiveMatch();renderTavern();}
 
 function leaveTable() {
@@ -816,7 +829,15 @@ function startMatch(opponent) {
 /* --------------------------------------------------------------------------
    5. Turn Actions: Roll, Bank, Zonk
    -------------------------------------------------------------------------- */
-function startPlayerTurn() { gameState.currentTurn='player';gameState.playerTurn=0;gameState.dice=[];gameState.rolledThisTurn=0;document.getElementById('aiStatusText').textContent='Ваш ход! Бросьте кости.';document.getElementById('comboText').textContent='Нажмите «Бросить кости»';renderTable();}
+function startPlayerTurn() {
+  gameState.currentTurn='player'; gameState.playerTurn=0; gameState.dice=[]; gameState.rolledThisTurn=0;
+  // ОСОБЫЕ КОСТИ: набор из 6 кубиков с их типами создаётся СТРОГО ОДИН РАЗ в начале хода
+  // игрока, пока все 6 костей новые. Дальше меняются только значения (value), а не type.
+  gameState.playerTurnDice = getPlayerDiceSet().map(t => ({ id: ++dieIdCounter, value: 0, special: t, state: 'table' }));
+  document.getElementById('aiStatusText').textContent='Ваш ход! Бросьте кости.';
+  document.getElementById('comboText').textContent='Нажмите «Бросить кости»';
+  renderTable();
+}
 
 function rollDieValue(specialType) {
   // Честный рандом 1/6 для всех 4 ботов и обычных костей игрока.
@@ -851,27 +872,35 @@ function executeRoll() {
   for (let i = 0; i < diceToRollCount; i++) { const placeholder = document.createElement('div'); placeholder.className = 'die rolling'; rolledArea.appendChild(placeholder); }
   const rollDelay = (isPlayer || aiSpeed >= 1) ? 500 : 150;
   setTimeout(() => {
-    const newDice = [];
-    let playerDiceSet = null;
+    let newDice = [];
     if (isPlayer) {
-      playerDiceSet = getPlayerDiceSet();
-      if (!hotDice) {
-        // Фиксация особых костей на весь ход: убираем из набора игрока те типы,
-        // что уже лежат в lockedDice, — отложенная «Волчья кость Ловчего» не дублируется.
-        const usedSpecials = lockedDice.filter(d => d.special && d.special !== 'ordinary').map(d => d.special);
-        if (usedSpecials.length) {
-          playerDiceSet = playerDiceSet.map(t => {
-            if (t === 'ordinary') return t;
-            const idx = usedSpecials.indexOf(t);
-            if (idx !== -1) { usedSpecials.splice(idx, 1); return 'ordinary'; }
-            return t;
-          });
-        }
+      // ОСОБЫЕ КОСТИ ФИКСИРУЮТСЯ НА ВЕСЬ ХОД.
+      // Набор из 6 кубиков с их типами (special) создаётся ровно один раз в начале хода
+      // (см. startPlayerTurn). Здесь мы НИКОГДА не перезаписываем die.special / diceType —
+      // при любом перебросе меняется ТОЛЬКО числовое значение (value). Поэтому особая
+      // кость остаётся особой до конца хода, даже если на столе осталась 1, 2 или 3 кости.
+      if (!gameState.playerTurnDice || gameState.playerTurnDice.length !== DICE_SET_SIZE) {
+        gameState.playerTurnDice = getPlayerDiceSet().map(t => ({ id: ++dieIdCounter, value: 0, special: t, state: 'table' }));
       }
+      const turnDice = gameState.playerTurnDice;
+      if (isFirstRollOfTurn || hotDice) {
+        // Бросок всех шести костей: перебрасываем значения, типы сохраняем.
+        turnDice.forEach(d => { d.value = rollDieValue(d.special); d.state = 'table'; });
+        newDice = turnDice.slice();
+        gameState.dice = newDice;
+      } else {
+        // Переброс ТОЛЬКО оставшихся на столе кубиков — правим лишь их значение.
+        const tableDice = getTableDice();
+        tableDice.forEach(d => { d.value = rollDieValue(d.special); });
+        newDice = tableDice;
+        gameState.dice = lockedDice.concat(newDice);
+      }
+    } else {
+      // Соперник: честный рандом 1/6, особых типов нет.
+      for (let i = 0; i < diceToRollCount; i++) newDice.push({ id: ++dieIdCounter, value: rollDieValue(null), special: null, state: 'table' });
+      gameState.dice = hotDice ? newDice : lockedDice.concat(newDice);
     }
-    for (let i = 0; i < diceToRollCount; i++) { const slot = playerDiceSet ? playerDiceSet[(gameState.rolledThisTurn + i) % DICE_SET_SIZE] : null; newDice.push({ id: ++dieIdCounter, value: rollDieValue(slot), special: slot, state: 'table' }); }
     gameState.rolledThisTurn += diceToRollCount;
-    gameState.dice = hotDice ? newDice : lockedDice.concat(newDice);
     gameState.isRolling = false;
     if (matchState !== 'playing') return;
     const currentRollValues = newDice.map(d => d.value);
@@ -1015,6 +1044,7 @@ function saveActiveMatch() {
     playerTurn: gameState.playerTurn, aiTurn: gameState.aiTurn,
     currentTurn: gameState.currentTurn, rolledThisTurn: gameState.rolledThisTurn,
     dice: gameState.dice.map(d => ({ id: d.id, value: d.value, special: d.special, state: d.state })),
+    playerTurnDice: (gameState.playerTurnDice || []).map(d => ({ id: d.id, value: d.value, special: d.special, state: d.state })),
     goldBeforeBet: gold + currentOpponent.bet
   };
   try { localStorage.setItem(STORAGE_KEYS.activeMatch, JSON.stringify(data)); } catch(e) {}
@@ -1038,8 +1068,20 @@ function loadActiveMatch() {
     gameState.aiTurn = data.aiTurn || 0;
     gameState.currentTurn = data.currentTurn || 'player';
     gameState.rolledThisTurn = data.rolledThisTurn || 0;
-    gameState.dice = (data.dice || []).map(d => ({ id: d.id, value: d.value, special: d.special || null, state: d.state }));
-    dieIdCounter = gameState.dice.reduce((max, d) => Math.max(max, d.id), 0);
+    // Восстанавливаем «замороженный» набор из 6 костей с типами (если сохранён),
+    // чтобы особые кости не терялись после перезагрузки страницы.
+    gameState.playerTurnDice = (Array.isArray(data.playerTurnDice) && data.playerTurnDice.length === DICE_SET_SIZE)
+      ? data.playerTurnDice.map(d => ({ id: d.id, value: d.value, special: d.special || 'ordinary', state: d.state || 'table' }))
+      : null;
+    gameState.dice = (data.dice || []).map(d => {
+      const obj = { id: d.id, value: d.value, special: d.special || null, state: d.state };
+      if (gameState.playerTurnDice) {
+        const shared = gameState.playerTurnDice.find(t => t.id === d.id);
+        if (shared) { shared.value = obj.value; shared.state = obj.state; return shared; }
+      }
+      return obj;
+    });
+    dieIdCounter = gameState.dice.concat(gameState.playerTurnDice || []).reduce((max, d) => Math.max(max, d.id), 0);
     gameState.isRolling = false;
     if (data.goldBeforeBet && data.goldBeforeBet > gold) addGold(-(data.goldBeforeBet - gold));
     document.getElementById('aiName').textContent = opp.name;
@@ -1058,7 +1100,7 @@ function loadActiveMatch() {
 function startAITurn() {
   if (matchState !== 'playing') return;
   const name = currentOpponent ? currentOpponent.name : 'Соперник';
-  gameState.currentTurn = 'ai'; gameState.aiTurn = 0; gameState.dice = []; gameState.rolledThisTurn = 0;
+  gameState.currentTurn = 'ai'; gameState.aiTurn = 0; gameState.dice = []; gameState.playerTurnDice = null; gameState.rolledThisTurn = 0;
   document.getElementById('aiStatusText').textContent = name + ' размышляет…';
   document.getElementById('comboText').textContent = 'Ход соперника: ' + name;
   renderTable(); updateSkipButton(); saveActiveMatch();
@@ -1198,7 +1240,9 @@ document.getElementById('promoBtn').addEventListener('click', () => { soundManag
 document.getElementById('closePromoBtn').addEventListener('click', () => { document.getElementById('promoModal').classList.remove('active'); renderTavern(); });
 document.getElementById('promoApplyBtn').addEventListener('click', () => { const input = document.getElementById('promoInput'); if (redeemPromo(input.value)) input.value = ''; });
 document.getElementById('promoInput').addEventListener('keydown', (e) => { if (e.key !== 'Enter') return; const input = e.target; if (redeemPromo(input.value)) input.value = ''; });
-document.getElementById('friendsBtn').addEventListener('click', () => { soundManager.init(); renderFriendsModal(); document.getElementById('friendsModal').classList.add('active'); syncReferralsWithServer(); });
+// Открытие окна друзей НЕ дёргает сеть: синхронизация с сервером рефералов идёт
+// ровно один раз при старте игры и вручную — по кнопке «Ввести» (submitFriendCode).
+document.getElementById('friendsBtn').addEventListener('click', () => { soundManager.init(); renderFriendsModal(); document.getElementById('friendsModal').classList.add('active'); });
 document.getElementById('closeFriendsBtn').addEventListener('click', () => { document.getElementById('friendsModal').classList.remove('active'); renderTavern(); });
 document.getElementById('refCopyBtn').addEventListener('click', () => { soundManager.init(); copyReferralLink(); });
 // Ввод кода друга: только через сервер (локальной накрутки больше нет)
