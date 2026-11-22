@@ -2041,3 +2041,57 @@ html, body {
 }
 
 .ach-item.locked .ach-state { color: #8a7455; }
+
+/* ==========================================================================
+   ФИКС МОБИЛЬНЫХ ПОЛЕЙ ВВОДА (Android / Samsung WebView, iOS Safari)
+   Перекрываем дефолтные стили браузера: текст, курсор и фон всегда видимы.
+   ========================================================================== */
+#friendsModal input,
+#promoModal input {
+  color: #fff3d6 !important;
+  -webkit-text-fill-color: #fff3d6 !important;
+  caret-color: #f3c65f !important;
+  background-color: #1c110a !important;
+  border: 1.5px solid #8c6239 !important;
+  font-size: 16px !important;
+  line-height: 1.4 !important;
+  height: 46px !important;
+  padding: 10px 12px !important;
+  opacity: 1 !important;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+#friendsModal input::placeholder,
+#promoModal input::placeholder {
+  color: #9b8259 !important;
+  -webkit-text-fill-color: #9b8259 !important;
+  opacity: 1 !important;
+}
+
+#friendsModal input:focus,
+#promoModal input:focus {
+  border-color: #f3c65f !important;
+  box-shadow: 0 0 8px rgba(243, 198, 95, 0.35) !important;
+  outline: none !important;
+}
+
+/* Заблокированное поле (код друга уже активирован) остаётся видимым, но заметно «погасшим» */
+#friendsModal input:disabled,
+#promoModal input:disabled {
+  background-color: #241710 !important;
+  border-style: dashed !important;
+  filter: grayscale(0.45);
+}
+
+/* Карточки модальных окон: внутренняя вертикальная прокрутка под клавиатуру */
+.modal-card {
+  max-height: 85dvh !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Порог «20 друзей» с ачивкой переносит награду на вторую строку */
+.threshold-item.with-ach { flex-wrap: wrap; }
+.threshold-ach { flex: 1 0 100%; font-size: 10px; color: #a38f78; }
+.threshold-item.done .threshold-ach { color: #cbe4b6; }

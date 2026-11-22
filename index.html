@@ -257,7 +257,8 @@
         <h4>🎁 Промокоды, друзья и достижения</h4>
         <p style="margin:0;">
           Кнопка «🎁 Промокоды» — одноразовые тайные коды Сезона 1 (ищите их в Telegram-канале и роликах на YouTube).<br>
-          Кнопка «🤝 Друзья» — ваш личный код <strong>TRG-XXXX</strong>: за каждого друга <strong>+50 грошей</strong>,
+          Кнопка «🤝 Друзья» — ваш личный код <strong>TRG-XXXX</strong>: друзья засчитываются автоматически,
+          когда заходят по вашей ссылке, — за каждого друга <strong>+50 грошей</strong>,
           а на <strong>5 / 10 / 15 / 20</strong> друзьях ждут награды <strong>+100 / +500 / +1000 / +2000</strong> грошей.
           Свой код и повторные коды вводить нельзя.<br>
           Кнопка «🏆 Достижения» — 20 наград за победы, комбинации и обустройство двора: соберите их все,
@@ -335,7 +336,7 @@
         <h4>🎟️ Промокод Сезона 1</h4>
         <p style="margin: 0 0 8px 0;">Одноразовые коды — каждый срабатывает лишь один раз на аккаунт.</p>
         <div class="promo-input-row">
-          <input type="text" id="promoInput" class="promo-input" placeholder="Введите промокод" autocomplete="off" maxlength="16">
+          <input type="text" id="promoInput" class="promo-input" placeholder="Введите промокод" inputmode="text" enterkeyhint="done" autocapitalize="characters" autocorrect="off" spellcheck="false" autocomplete="off" maxlength="16">
           <button class="btn btn-primary promo-apply" id="promoApplyBtn">Ввести</button>
         </div>
         <div class="promo-hint">🔎 Ищи тайные коды в нашем Telegram-канале и роликах на YouTube!</div>
@@ -353,16 +354,20 @@
         <h4>🪪 Ваш личный код</h4>
         <div class="friend-code-row">
           <span class="friend-code" id="refCodeValue">—</span>
-          <button class="btn btn-secondary" id="refCopyBtn" title="Скопировать ссылку-приглашение">🔗 Ссылка</button>
+          <button class="btn btn-secondary" id="refCopyBtn" title="Скопировать ссылку-приглашение">🔗 Скопировать ссылку</button>
         </div>
         <div class="ref-note" id="friendInviteNote"></div>
       </div>
       <div class="prize-box">
         <h4>👥 Пригласи друга</h4>
+        <div class="ref-note" style="margin: 0 0 8px 0; text-align: left;">
+          Друзья засчитываются автоматически после перехода по вашей ссылке — вводить их коды вручную не нужно.
+        </div>
         <div class="promo-input-row">
-          <input type="text" id="refFriendInput" class="promo-input" placeholder="Код друга (TRG-XXXX)" autocomplete="off" maxlength="16">
+          <input type="text" id="refFriendInput" class="promo-input" placeholder="Код друга (TRG-XXXX)" inputmode="text" enterkeyhint="done" autocapitalize="characters" autocorrect="off" spellcheck="false" autocomplete="off" maxlength="16">
           <button class="btn btn-primary promo-apply" id="refFriendBtn">Ввести</button>
         </div>
+        <div class="ref-note" id="refRedeemNote"></div>
         <div class="friend-progress">
           <div class="quest-bar"><div class="quest-fill" id="friendProgressFill"></div></div>
           <div class="quest-progress"><span>Приглашено друзей</span><span id="friendProgressLabel">0 / 20</span></div>

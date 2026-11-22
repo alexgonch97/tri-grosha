@@ -4,6 +4,16 @@
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
+   1. Сезон 1: реферальный API-сервер (Cloudflare Worker)
+   Пока в адресе стоит YOUR_SUBDOMAIN — игра работает в офлайн-режиме:
+   все вызовы сети аккуратно пропускаются, интерфейс остаётся рабочим.
+   -------------------------------------------------------------------------- */
+const REF_API_URL = 'https://trigrosha-ref.YOUR_SUBDOMAIN.workers.dev';
+function isRefApiReady() {
+  return typeof REF_API_URL === 'string' && REF_API_URL.length > 0 && !REF_API_URL.includes('YOUR_SUBDOMAIN');
+}
+
+/* --------------------------------------------------------------------------
    2. Telegram WebApp Integration & Haptic Feedback
    -------------------------------------------------------------------------- */
 const tg = window.Telegram?.WebApp;
@@ -28,7 +38,8 @@ const STORAGE_KEYS = {
   diceEquipped: 'trigrosha_s1_dice_equipped', aiSpeed: 'trigrosha_s1_ai_speed',
   activeMatch: 'trigrosha_s1_active_match',
   promos: 'trigrosha_s1_promos', referral: 'trigrosha_s1_referral',
-  friends: 'trigrosha_s1_friends', achievements: 'trigrosha_s1_achievements'
+  friends: 'trigrosha_s1_friends', achievements: 'trigrosha_s1_achievements',
+  refPaidTotal: 'trigrosha_s1_ref_paid_total', welcomePaid: 'trigrosha_s1_welcome_paid'
 };
 const START_GOLD = 100;
 
@@ -40,7 +51,8 @@ const START_GOLD = 100;
 const CLOUD_SYNC_KEYS = [
   STORAGE_KEYS.gold, STORAGE_KEYS.wins, STORAGE_KEYS.upgrades, STORAGE_KEYS.diceOwned,
   STORAGE_KEYS.diceEquipped, STORAGE_KEYS.quests, STORAGE_KEYS.promos, STORAGE_KEYS.referral,
-  STORAGE_KEYS.friends, STORAGE_KEYS.achievements
+  STORAGE_KEYS.friends, STORAGE_KEYS.achievements,
+  STORAGE_KEYS.refPaidTotal, STORAGE_KEYS.welcomePaid
 ];
 const cloudStorage = tg?.CloudStorage || null;
 const localKeysAtBoot = new Set();
@@ -209,9 +221,12 @@ function loadFriendsState() {
     ? s.friends.filter(c => typeof c === 'string' && /^TRG-\d{4}$/.test(c) && c !== s.code)
         .filter((c, i, arr) => arr.indexOf(c) === i).slice(0, MAX_FRIENDS)
     : [];
-  const claimed = Array.isArray(s.thresholdClaimed) ? s.thresholdClaimed : [];
-  s.thresholdClaimed = FRIEND_THRESHOLDS.filter(t => claimed.includes(t.count) || s.friends.length >= t.count).map(t => t.count);
+  s.friendsCount = Number.isFinite(s.friendsCount) ? Math.max(0, Math.min(Math.floor(s.friendsCount), MAX_FRIENDS)) : 0;
   s.inviteBonus = Boolean(s.inviteBonus);
+  s.redeemUsed = Boolean(s.redeemUsed);
+  const claimed = Array.isArray(s.thresholdClaimed) ? s.thresholdClaimed : [];
+  const countedFriends = Math.max(s.friends.length, s.friendsCount);
+  s.thresholdClaimed = FRIEND_THRESHOLDS.filter(t => claimed.includes(t.count) || countedFriends >= t.count).map(t => t.count);
   return s;
 }
 let friendsState = loadFriendsState();
@@ -230,44 +245,141 @@ function redeemPromo(rawCode) {
   renderPromoModal(); updateBegButton();
   return true;
 }
-function redeemFriendCode(rawCode) {
-  const code = String(rawCode || '').trim().toUpperCase();
-  if (!code) { showToast('Введите код друга.'); return false; }
-  if (!/^TRG-\d{4}$/.test(code)) { showToast('Код друга должен быть вида TRG-XXXX.'); triggerHaptic('notification', 'error'); return false; }
-  if (code === friendsState.code) { showToast('Свой код вводить нельзя.'); triggerHaptic('notification', 'error'); return false; }
-  if (friendsState.friends.includes(code)) { showToast('Код «' + code + '» уже активирован.'); triggerHaptic('notification', 'warning'); return false; }
-  if (friendsState.friends.length >= MAX_FRIENDS) { showToast('Все ' + MAX_FRIENDS + ' друзей уже приглашены!'); triggerHaptic('notification', 'warning'); return false; }
-  friendsState.friends.push(code);
-  addGold(FRIEND_REWARD, true);
-  showToast('Друг «' + code + '» принят: +' + FRIEND_REWARD + ' грошей!');
-  grantFriendThresholds();
-  raiseAch('company_soul', friendsState.friends.length);
-  saveFriendsState();
+/* Синхронизация рефералов с API-сервером (до подключения Worker'а — офлайн-заглушка) */
+function syncReferralsWithServer() {
+  if (!isRefApiReady()) return;
+  let initData = '', startParam = '';
+  try { initData = window.Telegram?.WebApp?.initData || ''; } catch (e) { initData = ''; }
+  try { startParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param || ''; } catch (e) { startParam = ''; }
+  try {
+    fetch(REF_API_URL + '/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData, startParam })
+    })
+      .then(res => (res && res.ok ? res.json() : null))
+      .then(data => { if (data && data.ok) applyServerReferralData(data); })
+      .catch(() => {});
+  } catch (e) { /* сеть недоступна — попробуем при следующем запуске */ }
+}
+function applyServerReferralData(data) {
+  let changed = false;
+  if (typeof data.myCode === 'string' && /^TRG-\d{4}$/.test(data.myCode) && data.myCode !== friendsState.code) {
+    friendsState.code = data.myCode; changed = true;
+  }
+  const serverCount = Math.max(0, Math.min(parseInt(data.friendsCount, 10) || 0, MAX_FRIENDS));
+  const count = Math.max(friendsState.friends.length, serverCount);
+  if (count !== friendsState.friendsCount) { friendsState.friendsCount = count; changed = true; }
+  if (Array.isArray(data.friends)) {
+    const codes = data.friends.filter(c => typeof c === 'string' && /^TRG-\d{4}$/.test(c))
+      .filter((c, i, arr) => arr.indexOf(c) === i).slice(0, MAX_FRIENDS);
+    if (codes.join(',') !== friendsState.friends.join(',')) { friendsState.friends = codes; changed = true; }
+  }
+  if (Array.isArray(data.claimedMilestones)) {
+    data.claimedMilestones.forEach(m => {
+      const n = parseInt(m, 10);
+      if (Number.isFinite(n) && !friendsState.thresholdClaimed.includes(n)) { friendsState.thresholdClaimed.push(n); changed = true; }
+    });
+  }
+  if (data.redeemUsed === true && !friendsState.redeemUsed) { friendsState.redeemUsed = true; changed = true; }
+  if (changed) saveFriendsState();
+  // 1) Награда за друзей: 50 за каждого + разовые пороги — доначисляем только разницу
+  const dueTotal = friendsRewardTotal(count);
+  const paidTotal = friendsPaidTotal();
+  if (dueTotal > paidTotal) {
+    const diff = dueTotal - paidTotal;
+    saveFriendsPaidTotal(dueTotal);
+    addGold(diff, true);
+    showToast('🤝 По вашей ссылке присоединились друзья! Начислено: +' + diff + ' грошей');
+  }
+  // 2) Бонус новичка, пришедшему по ссылке друга
+  if (data.welcomeBonusGranted === true) grantWelcomeBonus();
+  // 3) 20 друзей по ссылке открывают «Душу компании»
+  if (count >= MAX_FRIENDS) unlockAch('company_soul');
+  renderFriendsModal();
+  renderTavern();
+}
+/* --- Друзья: коды принимает ТОЛЬКО сервер — локальная накрутка полностью убрана --- */
+function friendsPaidTotal() {
+  const v = parseInt(localStorage.getItem(STORAGE_KEYS.refPaidTotal) || '0', 10);
+  return (Number.isFinite(v) && v > 0) ? v : 0;
+}
+function saveFriendsPaidTotal(total) {
+  try { localStorage.setItem(STORAGE_KEYS.refPaidTotal, String(total)); } catch (e) {}
+  cloudSet(STORAGE_KEYS.refPaidTotal, String(total));
+}
+function friendCount() { return Math.max(friendsState.friends.length, friendsState.friendsCount || 0); }
+/* Общая положенная награда за N друзей: 50 за каждого + разовые пороговые бонусы */
+function friendsRewardTotal(count) {
+  const safe = Math.max(0, Math.min(parseInt(count, 10) || 0, MAX_FRIENDS));
+  let total = safe * FRIEND_REWARD;
+  FRIEND_THRESHOLDS.forEach(t => { if (safe >= t.count) total += t.reward; });
+  return total;
+}
+function isWelcomeBonusPaid() {
+  if (friendsState.inviteBonus) return true;
+  try { return localStorage.getItem(STORAGE_KEYS.welcomePaid) === '1'; } catch (e) { return false; }
+}
+function markWelcomeBonusPaid() {
+  friendsState.inviteBonus = true; saveFriendsState();
+  try { localStorage.setItem(STORAGE_KEYS.welcomePaid, '1'); } catch (e) {}
+  cloudSet(STORAGE_KEYS.welcomePaid, '1');
+}
+/* +50 новичку, пришедшему по ссылке друга (начисляется строго один раз) */
+function grantWelcomeBonus() {
+  if (isWelcomeBonusPaid()) return false;
+  markWelcomeBonusPaid();
+  addGold(NEWCOMER_BONUS, true);
   triggerHaptic('notification', 'success');
+  showToast('🎉 Бонус новичка за приглашение по ссылке: +' + NEWCOMER_BONUS + ' грошей!');
   renderFriendsModal();
   return true;
 }
-function grantFriendThresholds() {
-  const count = friendsState.friends.length;
-  FRIEND_THRESHOLDS.forEach(t => {
-    if (count < t.count || friendsState.thresholdClaimed.includes(t.count)) return;
-    friendsState.thresholdClaimed.push(t.count);
-    addGold(t.reward, true);
-    showToast('Приглашено ' + t.count + ' друзей: +' + t.reward + ' грошей!');
-    if (t.achievement) unlockAch(t.achievement);
-  });
-}
+/* Стартовая ссылка вида ref_TRG-XXXX: +50 новичку (один раз, флаг trigrosha_s1_welcome_paid) */
 function activateStartParamReferral() {
   let param = ''; try { param = tg?.initDataUnsafe?.start_param || ''; } catch (e) { param = ''; }
   const m = String(param).match(/^ref_(TRG-\d{4})$/i);
   if (!m) return false;
   const code = m[1].toUpperCase();
-  if (code === friendsState.code || friendsState.inviteBonus) return false;
-  friendsState.inviteBonus = true; saveFriendsState();
-  addGold(NEWCOMER_BONUS, true);
-  triggerHaptic('notification', 'success');
-  showToast('Вас пригласил друг «' + code + '»: +' + NEWCOMER_BONUS + ' грошей новичку!');
-  renderFriendsModal();
+  if (code === friendsState.code) return false;
+  return grantWelcomeBonus();
+}
+/* Ручной ввод кода друга: отправляем на сервер, локального начисления больше нет */
+function submitFriendCode() {
+  const input = document.getElementById('refFriendInput');
+  if (!input) return false;
+  const code = String(input.value || '').trim().toUpperCase();
+  if (!code) { showToast('Введите код друга.'); return false; }
+  if (!/^TRG-\d{4}$/.test(code)) { showToast('Код друга должен быть вида TRG-XXXX.'); triggerHaptic('notification', 'error'); return false; }
+  if (code === friendsState.code) { showToast('Свой код вводить нельзя.'); triggerHaptic('notification', 'error'); return false; }
+  if (friendsState.redeemUsed) { showToast('Код друга уже активирован — он действует лишь однажды.'); triggerHaptic('notification', 'warning'); return false; }
+  if (!isRefApiReady()) {
+    triggerHaptic('notification', 'warning');
+    showToast('Ввод кодов друзей временно на техобслуживании — приглашайте друзей по своей ссылке!');
+    return false;
+  }
+  let initData = ''; try { initData = window.Telegram?.WebApp?.initData || ''; } catch (e) { initData = ''; }
+  try {
+    fetch(REF_API_URL + '/api/redeem-ref', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData, refCode: code })
+    })
+      .then(res => (res && res.ok ? res.json() : null))
+      .then(data => {
+        if (data && data.ok) {
+          friendsState.redeemUsed = true; saveFriendsState();
+          input.value = ''; renderFriendsModal();
+          triggerHaptic('notification', 'success');
+          showToast('Код друга «' + code + '» принят сервером!');
+          syncReferralsWithServer();
+        } else {
+          triggerHaptic('notification', 'error');
+          showToast((data && data.message) ? String(data.message) : 'Сервер не принял этот код друга.');
+        }
+      })
+      .catch(() => { triggerHaptic('notification', 'error'); showToast('Сервер недоступен — попробуйте позже.'); });
+  } catch (e) { showToast('Сервер недоступен — попробуйте позже.'); }
   return true;
 }
 function copyReferralLink() {
@@ -294,7 +406,7 @@ function renderPromoModal() {
 }
 function renderFriendsModal() {
   const codeEl = document.getElementById('refCodeValue'); if (codeEl) codeEl.textContent = friendsState.code;
-  const count = friendsState.friends.length;
+  const count = friendCount();
   const label = document.getElementById('friendProgressLabel');
   if (label) label.textContent = count + ' / ' + MAX_FRIENDS;
   const fill = document.getElementById('friendProgressFill');
@@ -305,26 +417,35 @@ function renderFriendsModal() {
     FRIEND_THRESHOLDS.forEach(t => {
       const done = count >= t.count;
       const item = document.createElement('div');
-      item.className = 'threshold-item' + (done ? ' done' : '');
-      item.innerHTML = '<span class="threshold-count">' + t.count + ' друзей</span><span class="threshold-reward">' + (done ? '✔ ' : '') + '+' + t.reward + ' 🪙</span>';
+      item.className = 'threshold-item' + (done ? ' done' : '') + (t.achievement ? ' with-ach' : '');
+      item.innerHTML = '<span class="threshold-count">' + t.count + ' друзей</span>'
+        + '<span class="threshold-reward">' + (done ? '✔ ' : '') + '+' + t.reward + ' 🪙</span>'
+        + (t.achievement ? '<span class="threshold-ach">🏆 ачивка «Душа компании»</span>' : '');
       thresholds.appendChild(item);
     });
   }
   const inviteNote = document.getElementById('friendInviteNote');
-  if (inviteNote) inviteNote.textContent = friendsState.inviteBonus
+  if (inviteNote) inviteNote.textContent = isWelcomeBonusPaid()
     ? '🎉 Бонус новичка за приглашение по ссылке уже получен (+' + NEWCOMER_BONUS + ' 🪙).'
-    : 'Пришли по ссылке друга? Бонус новичка +' + NEWCOMER_BONUS + ' 🪙 придёт автоматически при запуске игры.';
+    : 'Пришли по ссылке друга? Бонус новичка +' + NEWCOMER_BONUS + ' 🪙 придёт автоматически после перехода по ссылке.';
   const note = document.getElementById('refNote');
   if (note) note.textContent = count >= MAX_FRIENDS
     ? 'Все ' + MAX_FRIENDS + ' друзей приглашены — «Душа компании» ваша!'
-    : 'За каждого друга +' + FRIEND_REWARD + ' 🪙 · приглашено ' + count + ' из ' + MAX_FRIENDS + '. Свой код вводить нельзя.';
+    : 'Друзья засчитываются автоматически после перехода по вашей ссылке: +' + FRIEND_REWARD
+      + ' 🪙 за каждого · приглашено ' + count + ' из ' + MAX_FRIENDS + '. Свой код вводить нельзя.';
+  const redeemNote = document.getElementById('refRedeemNote');
+  if (redeemNote) redeemNote.textContent = friendsState.redeemUsed
+    ? '✅ Код друга уже активирован — повторно ввести его нельзя.'
+    : (isRefApiReady()
+      ? 'Код друга принимает сервер и только один раз.'
+      : 'Ввод кодов друзей временно на техобслуживании — приглашайте друзей по своей ссылке!');
   const codeList = document.getElementById('friendCodeList');
   if (codeList) {
     codeList.innerHTML = '';
     if (!count) {
       const empty = document.createElement('span');
       empty.className = 'friend-empty';
-      empty.textContent = 'Коды друзей появятся здесь.';
+      empty.textContent = 'Список друзей подтянется с сервера после синхронизации.';
       codeList.appendChild(empty);
     } else {
       friendsState.friends.forEach(c => {
@@ -336,9 +457,14 @@ function renderFriendsModal() {
     }
   }
   const full = count >= MAX_FRIENDS;
+  const locked = full || friendsState.redeemUsed;
   const input = document.getElementById('refFriendInput'), btn = document.getElementById('refFriendBtn');
-  if (input) { input.disabled = full; if (full) input.value = ''; }
-  if (btn) btn.disabled = full;
+  if (input) {
+    input.disabled = locked;
+    input.placeholder = friendsState.redeemUsed ? '✅ Код друга уже активирован' : (full ? 'Все ' + MAX_FRIENDS + ' друзей приглашены' : 'Код друга (TRG-XXXX)');
+    if (locked) input.value = '';
+  }
+  if (btn) { btn.disabled = locked; btn.textContent = locked ? '✔' : 'Ввести'; }
 }
 /* --------------------------------------------------------------------------
    2k. Сезон 1: Достижения — 20 наград + 1 секретная (localStorage + CloudStorage)
@@ -449,7 +575,7 @@ function checkPersistentAchievements(muteToast) {
   raiseAch('rich_purse', gold);
   raiseAch('dice_collector', ownedDice.length);
   raiseAch('inn_master', purchasedUpgrades.length);
-  raiseAch('company_soul', friendsState.friends.length);
+  raiseAch('company_soul', friendCount());
   achToastMuted = false;
   refreshAchUI();
 }
@@ -489,6 +615,8 @@ function flushCloudProgress() {
   cloudSet(STORAGE_KEYS.quests, JSON.stringify(questState));
   cloudSet(STORAGE_KEYS.promos, JSON.stringify(redeemedPromos));
   cloudSet(STORAGE_KEYS.friends, JSON.stringify(friendsState));
+  cloudSet(STORAGE_KEYS.refPaidTotal, String(friendsPaidTotal()));
+  cloudSet(STORAGE_KEYS.welcomePaid, isWelcomeBonusPaid() ? '1' : '0');
   cloudSet(STORAGE_KEYS.achievements, JSON.stringify(achState));
 }
 function syncCloudProgress() {
@@ -1070,11 +1198,12 @@ document.getElementById('promoBtn').addEventListener('click', () => { soundManag
 document.getElementById('closePromoBtn').addEventListener('click', () => { document.getElementById('promoModal').classList.remove('active'); renderTavern(); });
 document.getElementById('promoApplyBtn').addEventListener('click', () => { const input = document.getElementById('promoInput'); if (redeemPromo(input.value)) input.value = ''; });
 document.getElementById('promoInput').addEventListener('keydown', (e) => { if (e.key !== 'Enter') return; const input = e.target; if (redeemPromo(input.value)) input.value = ''; });
-document.getElementById('friendsBtn').addEventListener('click', () => { soundManager.init(); renderFriendsModal(); document.getElementById('friendsModal').classList.add('active'); });
+document.getElementById('friendsBtn').addEventListener('click', () => { soundManager.init(); renderFriendsModal(); document.getElementById('friendsModal').classList.add('active'); syncReferralsWithServer(); });
 document.getElementById('closeFriendsBtn').addEventListener('click', () => { document.getElementById('friendsModal').classList.remove('active'); renderTavern(); });
 document.getElementById('refCopyBtn').addEventListener('click', () => { soundManager.init(); copyReferralLink(); });
-document.getElementById('refFriendBtn').addEventListener('click', () => { const input = document.getElementById('refFriendInput'); if (redeemFriendCode(input.value)) input.value = ''; });
-document.getElementById('refFriendInput').addEventListener('keydown', (e) => { if (e.key !== 'Enter') return; const input = e.target; if (redeemFriendCode(input.value)) input.value = ''; });
+// Ввод кода друга: только через сервер (локальной накрутки больше нет)
+document.getElementById('refFriendBtn').addEventListener('click', () => { soundManager.init(); submitFriendCode(); });
+document.getElementById('refFriendInput').addEventListener('keydown', (e) => { if (e.key !== 'Enter') return; e.preventDefault(); submitFriendCode(); });
 document.getElementById('achievementsBtn').addEventListener('click', () => { soundManager.init(); renderAchievements(); document.getElementById('achievementsModal').classList.add('active'); });
 document.getElementById('closeAchievementsBtn').addEventListener('click', () => { document.getElementById('achievementsModal').classList.remove('active'); renderTavern(); });
 document.getElementById('begBtn').addEventListener('click', () => { soundManager.init(); addGold(20, true); triggerHaptic('notification', 'success'); showToast('Сердобольный путник подал 20 грошей. Спасибо!'); });
@@ -1086,6 +1215,22 @@ document.getElementById('toTavernBtn').addEventListener('click', () => { documen
 // FIX #5: AI Speed Toggle & Skip
 document.getElementById('aiSpeedToggle').addEventListener('click', () => { toggleAiSpeed(); });
 document.getElementById('aiSkipBtn').addEventListener('click', () => { skipAITurn(); });
+
+/* --------------------------------------------------------------------------
+   7b. Мобильные клавиатуры (Samsung / Android WebView, iOS Safari):
+   при фокусе выводим поле ввода в центр экрана, чтобы клавиатура его не закрывала
+   -------------------------------------------------------------------------- */
+function installModalInputScrolling() {
+  const inputs = document.querySelectorAll('.modal-card input');
+  inputs.forEach(input => {
+    input.addEventListener('focus', () => {
+      setTimeout(() => {
+        try { input.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+        catch (e) { try { input.scrollIntoView(); } catch (err) {} }
+      }, 250);
+    });
+  });
+}
 
 // Bootstrap
 updateSpeedToggleUI(); updateSkipButton();
@@ -1099,6 +1244,8 @@ renderPromoModal();
 renderFriendsModal();
 renderAchievements();
 checkPersistentAchievements(true);
+installModalInputScrolling();
+syncReferralsWithServer();
 syncCloudProgress();
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushCloudProgress(); });
 window.addEventListener('pagehide', flushCloudProgress);
