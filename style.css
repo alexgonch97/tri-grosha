@@ -194,8 +194,18 @@ html, body {
   border: none;
   background: none;
   cursor: pointer;
+  pointer-events: none;
   transition: transform 0.2s ease;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Внутренний слой отвечает за область нажатия: сам .npc-spot кликов не ловит,
+   поэтому пустые углы рамок не блокируют соседних персонажей. */
+.npc-hit {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: auto;
 }
 
 .npc-sprite,
@@ -219,34 +229,21 @@ html, body {
   mask-image: linear-gradient(to bottom, #000 62%, transparent 95%);
 }
 
-/* Точные компактные рамки: сами спрайты и их свечение больше ничем не обрезаются,
+/* Точные откалиброванные рамки: сами спрайты и их свечение ничем не обрезаются,
    а у каждого персонажа своя аккуратная зона нажатия. Игнат стоит выше по кадру
-   и не пересекается головами с Сивкой и Яшкой, поэтому он лежит поверх них. */
-.npc-ignat {
-  left: 25%;
-  top: 25%;
-  width: 24%;
-  height: 41%;
-  z-index: 8;
-}
-
-.npc-sivka {
-  left: 3%;
-  top: 40%;
-  width: 31%;
-  height: 44%;
-  z-index: 7;
-}
-
-.npc-yashka {
-  left: 44%;
-  top: 37%;
-  width: 28%;
-  height: 47%;
-  z-index: 7;
-}
-
+   и перекрывается большим спрайтом Сивки, поэтому лежит ниже (z-index: 6),
+   а зона нажатия Сивки срезана над его головой (см. .npc-sivka .npc-hit). */
+.npc-ignat   { left: 25.8%; top: 36.8%; width: 24.4%; height: 38.5%; z-index: 6; }
+.npc-yashka  { left: 52.8%; top: 46.5%; width: 28.0%; height: 43.1%; z-index: 7; }
 .npc-lovchiy { left: 74.8%; top: 48.0%; width: 25.2%; height: 35.1%; z-index: 7; }
+.npc-sivka   { left: 3.7%;  top: 53.7%; width: 41.3%; height: 37.9%; z-index: 8; }
+
+/* Сивка перекрывает Игната своим большим спрайтом, поэтому срезаем у её
+   зоны нажатия ТОЛЬКО пустой верхний правый угол над головой — клики по Игнату
+   проходят свободно. Само свечение .npc-sprite маской не трогается. */
+.npc-sivka .npc-hit {
+  clip-path: polygon(0% 0%, 58% 0%, 62% 48%, 100% 62%, 100% 100%, 0% 100%);
+}
 
 /* Одинаково яркая, безопасная для GPU подсветка при наведении и выборе */
 .npc-spot:hover,
@@ -277,6 +274,7 @@ html, body {
   position: absolute;
   left: 50%;
   bottom: 4%;
+  pointer-events: auto;
   transform: translateX(-50%);
   z-index: 2;
   display: inline-flex;

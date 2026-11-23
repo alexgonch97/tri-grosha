@@ -134,7 +134,7 @@ function renderOpponents() {
     spot.dataset.npc = opp.id;
     spot.className = 'npc-spot npc-' + opp.id + (affordable ? '' : ' locked') + (selectedNpcId === opp.id ? ' selected' : '');
     spot.setAttribute('aria-label', opp.fullName + ' — ставка ' + opp.bet + ' грошей');
-    spot.innerHTML = '<img class="npc-sprite" src="' + opp.photo + '" alt="' + opp.fullName + '" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">' + opp.svg.replace('<svg ', '<svg class="npc-svg-fallback" style="display:none" ') + '<span class="npc-plate"><span class="npc-plate-name">' + opp.name + '</span><span class="npc-plate-bet">' + opp.bet + ' 🪙</span></span>';
+    spot.innerHTML = '<span class="npc-hit" aria-hidden="true"></span><img class="npc-sprite" src="' + opp.photo + '" alt="' + opp.fullName + '" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">' + opp.svg.replace('<svg ', '<svg class="npc-svg-fallback" style="display:none" ') + '<span class="npc-plate"><span class="npc-plate-name">' + opp.name + '</span><span class="npc-plate-bet">' + opp.bet + ' 🪙</span></span>';
     spot.addEventListener('click', () => onNpcClick(opp));
     layer.appendChild(spot);
   });
