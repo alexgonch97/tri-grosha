@@ -224,6 +224,28 @@ html, body {
 .npc-lovchiy { left: 74.8%; top: 48.0%; width: 25.2%; height: 35.1%; z-index: 7; }
 .npc-sivka   { left: 3.7%;  top: 53.7%; width: 41.3%; height: 37.9%; z-index: 8; }
 
+/* Обрезка кликабельных полигонов: пустые верхние прозрачные углы спрайтов переднего плана
+   больше не перекрывают кнопку Игната, а его зона нажатия немного расширена */
+.npc-sivka {
+  -webkit-clip-path: polygon(0% 0%, 62% 0%, 66% 48%, 100% 62%, 100% 100%, 0% 100%);
+  clip-path: polygon(0% 0%, 62% 0%, 66% 48%, 100% 62%, 100% 100%, 0% 100%);
+}
+
+.npc-yashka {
+  -webkit-clip-path: polygon(18% 0%, 82% 0%, 100% 38%, 100% 100%, 0% 100%, 0% 35%);
+  clip-path: polygon(18% 0%, 82% 0%, 100% 38%, 100% 100%, 0% 100%, 0% 35%);
+}
+
+.npc-lovchiy {
+  -webkit-clip-path: polygon(10% 0%, 95% 0%, 100% 100%, 0% 100%);
+  clip-path: polygon(10% 0%, 95% 0%, 100% 100%, 0% 100%);
+}
+
+.npc-ignat {
+  -webkit-clip-path: polygon(8% 0%, 92% 0%, 100% 100%, 0% 100%);
+  clip-path: polygon(8% 0%, 92% 0%, 100% 100%, 0% 100%);
+}
+
 /* Одинаково яркая, безопасная для GPU подсветка при наведении и выборе */
 .npc-spot:hover,
 .npc-spot.selected {
