@@ -74,16 +74,18 @@ html, body {
    ========================================================================== */
 #tavernScreen {
   overflow: hidden;
+  justify-content: space-between;
 }
 
 .hall-scene {
   position: relative;
-  width: 100%;
-  height: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  width: auto;
+  max-width: 100%;
   aspect-ratio: 3 / 4;
   margin: 0 auto;
-  flex: 0 0 auto;
-  min-height: 0;
   border-radius: 14px;
   border: 3px solid #4a3421;
   overflow: hidden;
@@ -344,15 +346,16 @@ html, body {
 .scroll-hint { margin-top: 6px; font-size: 10px; text-align: center; font-weight: 700; color: #8b1a1a; }
 
 .tavern-menu {
+  flex: 0 0 auto;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px;
+  gap: 5px;
 }
 
 .tavern-menu .btn {
   position: relative;
   font-size: 10.5px;
-  padding: 8px 4px;
+  padding: 7px 4px;
   line-height: 1.15;
   letter-spacing: 0.3px;
 }
@@ -541,13 +544,10 @@ html, body {
   flex: 1;
   min-height: 0;
   background-color: #1c1109;
-  background-image:
-    url('assets/bg-table.jpg'),
-    radial-gradient(ellipse at 50% 42%, rgba(84, 56, 32, 0.55) 0%, rgba(18, 11, 6, 0.92) 72%),
-    repeating-linear-gradient(92deg, #2a1a10 0px, #2a1a10 3px, #22150c 3px, #22150c 7px),
-    repeating-linear-gradient(2deg, rgba(0, 0, 0, 0.22) 0px, rgba(0, 0, 0, 0.22) 1px, transparent 1px, transparent 9px);
-  background-size: cover, cover, auto, auto;
-  background-position: center, center, center, center;
+  background-image: url('assets/bg-table.jpg');
+  background-size: 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
   border: 4px solid #4a3421;
   border-radius: 16px;
   box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.9), 0 8px 24px rgba(0, 0, 0, 0.7);
@@ -627,14 +627,10 @@ html, body {
 .die {
   width: 52px;
   height: 52px;
-  background: linear-gradient(150deg, #ffffff 0%, #f5efdd 40%, #e2d8bf 74%, #cabfa2 100%);
-  border-radius: 11px;
-  box-shadow:
-    0 7px 15px rgba(0, 0, 0, 0.62),
-    0 3px 5px rgba(0, 0, 0, 0.45),
-    inset 0 2px 3px rgba(255, 255, 255, 0.95),
-    inset 0 -5px 9px rgba(122, 102, 70, 0.45),
-    inset 4px 0 7px rgba(0, 0, 0, 0.07);
+  background: url('assets/dice-ordinary.png') center / 100% 100% no-repeat;
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.65);
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(3, 1fr);
@@ -643,7 +639,6 @@ html, body {
   user-select: none;
   transition: transform 0.2s ease-out, box-shadow 0.2s, border 0.2s;
   position: relative;
-  border: 1px solid rgba(160, 140, 105, 0.85);
   /* Плоский 2D-рендер без 3D: preserve-3d / backface-visibility в Telegram WebView
      вызывали мигающие квадраты и срезанные тайлы. Явное финальное состояние
      гарантирует, что остановившийся кубик не зависает полупрозрачным. */
@@ -651,22 +646,11 @@ html, body {
   opacity: 1;
 }
 
-.die::before {
-  content: '';
-  position: absolute;
-  inset: 2px;
-  border-radius: 9px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.72) 0%, rgba(255, 255, 255, 0) 48%);
-  pointer-events: none;
-}
-
+/* PNG-текстура кости уже содержит объём и блики — псевдо-слои отключены,
+   чтобы не появлялись CSS-градиенты и квадратные рамки поверх скруглённых углов. */
+.die::before,
 .die::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 10px;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4), inset 0 -4px 8px rgba(0, 0, 0, 0.16);
-  pointer-events: none;
+  display: none;
 }
 
 /* Простая и «железобетонная» 2D-анимация броска: короткий сдвиг и поворот,
@@ -688,11 +672,15 @@ html, body {
   100% { transform: translateY(0) rotate(0deg); }
 }
 
-.die.selected {
-  border: 2px solid #ffd700;
-  box-shadow: 0 0 16px rgba(255, 215, 0, 0.8), 0 6px 12px rgba(0,0,0,0.5);
-  transform: translateY(-8px) scale(1.06);
-  background: linear-gradient(145deg, #fffdf5 0%, #f7ecc8 100%);
+.die.selected,
+.die.selected.special-odd,
+.die.selected.special-merchant,
+.die.selected.special-wolf {
+  border: none;
+  background-color: transparent;
+  transform: translateY(-8px) scale(1.07);
+  box-shadow: none;
+  filter: drop-shadow(0 0 6px #ffd700) drop-shadow(0 6px 10px rgba(0, 0, 0, 0.7));
   pointer-events: auto;
   cursor: pointer;
   opacity: 1 !important;
@@ -719,22 +707,13 @@ html, body {
 .die.locked {
   pointer-events: none;   /* зафиксированную кость нельзя ни выбрать, ни снять */
   cursor: default;
-  opacity: 0.8;
-  transform: scale(0.95);
-  background: linear-gradient(145deg, #e6ded0 0%, #c8bfa9 100%);
-  border: 1px solid #8b6b3e;
-  box-shadow:
-    0 4px 10px rgba(0, 0, 0, 0.55),
-    inset 0 2px 3px rgba(255, 255, 255, 0.7),
-    inset 0 -3px 6px rgba(90, 74, 50, 0.5);
+  border: none;
+  background-color: transparent;
+  opacity: 0.88;
+  transform: scale(0.94);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.6);
+  filter: brightness(0.76) saturate(0.85);
   animation: none;
-}
-
-/* Двойная рамка «запломбированной» кости */
-.die.locked::after {
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.3),
-    inset 0 0 0 3px rgba(139, 107, 62, 0.4);
 }
 
 .pip {
@@ -743,9 +722,13 @@ html, body {
   border-radius: 50%;
   justify-self: center;
   align-self: center;
-  background: radial-gradient(circle at 36% 30%, #c81414 0%, #900000 42%, #3d0000 100%);
-  box-shadow: inset 0 1px 2px rgba(255, 130, 130, 0.4), inset 0 -2px 3px rgba(0, 0, 0, 0.78), 0 1px 1px rgba(255, 255, 255, 0.45);
   visibility: hidden;
+}
+
+/* Обычная костяная (светлая) — глубокие тёмно-бордовые / почти чёрные точки */
+.die .pip {
+  background: radial-gradient(circle at 35% 35%, #5c1010 0%, #2a0404 68%, #120101 100%);
+  box-shadow: inset 0 1px 1px rgba(255, 180, 180, 0.25), 0 1px 1px rgba(255, 255, 255, 0.45);
 }
 
 /* Opponent speech bubble */
@@ -1276,8 +1259,7 @@ html, body {
    Классы upg-* висят на #app, слои включаются по мере покупки улучшений.
    ========================================================================== */
 .upg-candles-layer,
-.upg-oak-layer,
-.upg-cloth-layer {
+.upg-oak-layer {
   display: none;
 }
 
@@ -1454,58 +1436,20 @@ html, body {
   background-repeat: no-repeat;
 }
 
-/* #3 «Зелёное сукно и берестяной стакан»: изумрудное сукно с золотым кантом */
+/* #3 «Зелёное сукно с золотым шитьём»: изумрудное игровое полотно поверх дубового стола */
 #app.upg-cloth .tavern-table {
   background-color: #0d2a18;
-  background-image:
-    url('assets/bg-table.jpg'),
-    radial-gradient(ellipse at 50% 40%, rgba(38, 106, 62, 0.9) 0%, rgba(10, 40, 22, 0.96) 72%),
-    repeating-linear-gradient(45deg, #14401f 0px, #14401f 3px, #10351a 3px, #10351a 8px);
-  background-size: cover, cover, auto;
-  background-position: center, center, center;
+  background-image: url('assets/bg-table-cloth.jpg');
+  background-size: 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
   border: 4px solid #d4af37;
 }
-
-#app.upg-cloth .upg-cloth-layer { display: block; }
 
 #app.upg-cloth .kept-area {
   border-color: #d4af37;
   background: rgba(0, 0, 0, 0.32);
 }
-
-.table-cloth {
-  position: absolute;
-  left: 8%;
-  right: 8%;
-  top: 10%;
-  bottom: 10%;
-  z-index: -1;
-  border-radius: 16px;
-  background: radial-gradient(ellipse at 50% 42%, rgba(32, 108, 64, 0.95) 0%, rgba(13, 58, 34, 0.96) 68%, rgba(8, 38, 22, 0.98) 100%);
-  border: 2px solid rgba(212, 175, 55, 0.85);
-  box-shadow: inset 0 0 0 3px rgba(255, 222, 140, 0.22), inset 0 0 34px rgba(0, 0, 0, 0.72), 0 6px 18px rgba(0, 0, 0, 0.6);
-  pointer-events: none;
-}
-
-.table-cloth::before {
-  content: '';
-  position: absolute;
-  inset: 7px;
-  border-radius: 12px;
-  border: 1px dashed rgba(255, 222, 140, 0.45);
-}
-
-.table-cup {
-  position: absolute;
-  right: 10px;
-  bottom: 8px;
-  width: 34px;
-  height: 38px;
-  opacity: 0.92;
-  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.6));
-}
-
-.table-cup svg { display: block; width: 100%; height: 100%; }
 
 /* #4 «Уездная грамота и герб»: герб над названием и корона у имени игрока */
 .user-line {
@@ -1691,49 +1635,49 @@ html, body {
 .dice-preview {
   width: 30px;
   height: 30px;
+  border: none;
   border-radius: 8px;
-  border: 2px solid #bfb397;
-  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.7), 0 2px 6px rgba(0, 0, 0, 0.5);
+  background-color: transparent;
+  background-size: 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.6);
 }
 
-.preview-ordinary { background: linear-gradient(145deg, #ffffff 0%, #d8cfb8 100%); }
-.preview-odd { background: linear-gradient(145deg, #7a6f5c 0%, #2a251e 100%); border-color: #a1907a; }
-.preview-merchant { background: linear-gradient(145deg, #fff4c8 0%, #c9a227 100%); border-color: #ffd700; }
-.preview-wolf { background: linear-gradient(145deg, #7d2320 0%, #2a0d0d 100%); border-color: #d08a2a; }
+.preview-ordinary { background-image: url('assets/dice-ordinary.png'); }
+.preview-odd      { background-image: url('assets/dice-odd.png'); }
+.preview-merchant { background-image: url('assets/dice-merchant.png'); }
+.preview-wolf     { background-image: url('assets/dice-wolf.png'); }
 
-/* Особые кости игрока на столе */
+/* Особые кости игрока на столе — PNG-текстуры */
 .die.special-odd {
-  background: linear-gradient(145deg, #7a6f5c 0%, #4a4234 70%, #2a251e 100%);
-  border-color: #a1907a;
+  background-image: url('assets/dice-odd.png');
 }
 
 .die.special-merchant {
-  background: linear-gradient(145deg, #fff4c8 0%, #f0d178 70%, #c9a227 100%);
-  border-color: #ffd700;
+  background-image: url('assets/dice-merchant.png');
 }
 
 .die.special-wolf {
-  background: linear-gradient(145deg, #7d2320 0%, #4a1210 70%, #2a0d0d 100%);
-  border-color: #d08a2a;
+  background-image: url('assets/dice-wolf.png');
 }
 
-.die.special-odd .pip {
-  background: radial-gradient(circle at 35% 35%, #ffe9a8 0%, #b8860b 100%);
-}
-
-.die.special-wolf .pip {
-  background: radial-gradient(circle at 35% 35%, #ffe9a8 0%, #b8860b 100%);
-}
-
+/* Купеческая счастливая (жёлто-золотая) — тёмные шоколадно-угольные точки */
 .die.special-merchant .pip {
-  background: radial-gradient(circle at 35% 35%, #900000 0%, #500000 100%);
+  background: radial-gradient(circle at 35% 35%, #3d1806 0%, #1c0802 70%, #0a0200 100%);
+  box-shadow: inset 0 1px 1px rgba(255, 215, 120, 0.3), 0 1px 1px rgba(255, 235, 160, 0.5);
 }
 
-.die.selected.special-odd,
-.die.selected.special-merchant,
-.die.selected.special-wolf {
-  border-color: #ffd700;
-  box-shadow: 0 0 18px rgba(255, 215, 0, 0.85), 0 6px 12px rgba(0, 0, 0, 0.5);
+/* Нечётная кость (тёмный уголь) — яркие белые / слоновой кости точки */
+.die.special-odd .pip {
+  background: radial-gradient(circle at 35% 35%, #ffffff 0%, #f2ead8 65%, #c7bba0 100%);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), inset 0 -1px 2px rgba(90, 80, 60, 0.45);
+}
+
+/* Волчья кость Ловчего (тёмно-бордовая) — светлые бело-кремовые точки */
+.die.special-wolf .pip {
+  background: radial-gradient(circle at 35% 35%, #fffaf0 0%, #f5e2c4 65%, #cca97a 100%);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), inset 0 -1px 2px rgba(100, 65, 35, 0.45);
 }
 
 /* AI Speed Controls */

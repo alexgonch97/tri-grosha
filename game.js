@@ -180,7 +180,7 @@ function renderTavern() { renderHallDecor(); updateHeader(); renderOpponents(); 
 const UPGRADES = [
   { id:'candles', name:'Сальные свечи и шандал', desc:'Яркие мерцающие свечи с золотым ореолом и летящими искрами.', cost:150, cls:'upg-candles' },
   { id:'oak', name:'Дубовая стойка и бочонки', desc:'Резная дубовая рама с золотыми заклёпками вокруг зала и стола.', cost:400, cls:'upg-oak' },
-  { id:'cloth', name:'Зелёное сукно и берестяной стакан', desc:'Изумрудное сукно с золотым кантом и стаканом для костей.', cost:800, cls:'upg-cloth' },
+  { id:'cloth', name:'Зелёное сукно с золотым шитьём', desc:'Изумрудное игровое полотно с золотой вышивкой поверх дубового стола.', cost:800, cls:'upg-cloth' },
   { id:'crest', name:'Уездная грамота и герб', desc:'Герб над названием, золотая корона и пропуск в Сезон 2.', cost:1500, cls:'upg-crest' }
 ];
 function loadUpgrades() { let s=[]; try{s=JSON.parse(localStorage.getItem(STORAGE_KEYS.upgrades)||'[]')}catch(e){s=[]} if(!Array.isArray(s))s=[]; const r=[]; for(const u of UPGRADES){if(s.includes(u.id))r.push(u.id);else break;} return r; }
