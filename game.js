@@ -44,6 +44,14 @@ const STORAGE_KEYS = {
 const START_GOLD = 100;
 
 /* --------------------------------------------------------------------------
+   2b-1. Сезон 1: версия сохранения (SAVE_EPOCH)
+   Смена SAVE_EPOCH полностью стирает прогресс игрока — и в localStorage,
+   и в Telegram CloudStorage, — чтобы сезон начинался с чистого листа.
+   -------------------------------------------------------------------------- */
+const SAVE_EPOCH = 's1_wipe_1';
+const EPOCH_STORAGE_KEY = 'trigrosha_save_epoch';
+
+/* --------------------------------------------------------------------------
    2b-2. Сезон 1: фоновая синхронизация прогресса с Telegram CloudStorage
    Кошель, победы, обустройство, кости, дейлики, промокоды и рефералы
    дублируются в облако Telegram (поверх localStorage).
@@ -57,6 +65,21 @@ const CLOUD_SYNC_KEYS = [
 const cloudStorage = tg?.CloudStorage || null;
 const localKeysAtBoot = new Set();
 try { CLOUD_SYNC_KEYS.forEach(k => { try { if (localStorage.getItem(k) !== null) localKeysAtBoot.add(k); } catch (e) {} }); } catch (e) {}
+/* --- Управляемый сброс прогресса по версии сезона -------------------------
+   Если сохранённая эпоха не совпадает с SAVE_EPOCH — чистим все ключи
+   прогресса локально и в облаке, сбрасываем localKeysAtBoot и фиксируем
+   новую эпоху (заодно дублируя её в CloudStorage).                        */
+(function applySaveEpoch() {
+  let storedEpoch = null;
+  try { storedEpoch = localStorage.getItem(EPOCH_STORAGE_KEY); } catch (e) {}
+  if (storedEpoch === SAVE_EPOCH) return;
+  const wipeKeys = Object.values(STORAGE_KEYS).concat(['trigrosha_s1_ref_paid_total', 'trigrosha_s1_welcome_paid']);
+  wipeKeys.forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
+  if (cloudStorage) wipeKeys.forEach(k => { try { cloudStorage.removeItem(k, () => {}); } catch (e) {} });
+  localKeysAtBoot.clear(); // чтобы syncCloudProgress() не восстановил старые значения до записи новой эпохи
+  try { localStorage.setItem(EPOCH_STORAGE_KEY, SAVE_EPOCH); } catch (e) {}
+  if (cloudStorage) { try { cloudStorage.setItem(EPOCH_STORAGE_KEY, SAVE_EPOCH, () => {}); } catch (e) {} }
+})();
 let cloudReady = false;
 function cloudSet(key, value) { if (!cloudStorage || !cloudReady) return; try { cloudStorage.setItem(key, String(value), () => {}); } catch (e) {} }
 function cloudGetItems(keys, cb) { if (!cloudStorage) { cb({}); return; } try { cloudStorage.getItems(keys, (err, data) => { cb(err || !data ? {} : data); }); } catch (e) { cb({}); } }
@@ -731,7 +754,15 @@ function flushCloudProgress() {
 function syncCloudProgress() {
   if (!cloudStorage) return;
   setTimeout(() => { cloudReady = true; }, 8000);
-  cloudGetItems(CLOUD_SYNC_KEYS, (data) => {
+  cloudGetItems(CLOUD_SYNC_KEYS.concat(EPOCH_STORAGE_KEY), (data) => {
+    // Сброс по версии сезона: облако со старой эпохой игнорируем и
+    // перезаписываем его чистым стартовым состоянием.
+    if (data[EPOCH_STORAGE_KEY] !== SAVE_EPOCH) {
+      cloudReady = true;
+      cloudSet(EPOCH_STORAGE_KEY, SAVE_EPOCH);
+      flushCloudProgress();
+      return;
+    }
     let restored = false;
     CLOUD_SYNC_KEYS.forEach(k => {
       const val = data[k];
