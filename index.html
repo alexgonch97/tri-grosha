@@ -9,7 +9,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Marcellus&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <script>
+    window.__APP_VER = Date.now();
+    document.write('<link rel="stylesheet" href="style.css?v=' + window.__APP_VER + '">');
+  </script>
 </head>
 
 <body>
@@ -412,26 +415,12 @@
   </div>
 
 
-  <script src="sound.js"></script>
-  <!-- Промокоды Сезона 1: словарь window.SEASON_PROMOS строго перед game.js.
-       Файл подключается с меткой времени (?v=Date.now()), чтобы при старте
-       страницы не подхватился старый кэш. Если загрузка не удалась — остаётся
-       пустой словарь {}, игра продолжает работать, а свежие коды из promos.js
-       game.js подтянет сам при открытии окна «Промокоды». -->
   <script>
     window.SEASON_PROMOS = window.SEASON_PROMOS || {};
-    (function () {
-      var promoUrl = 'promos.js?v=' + Date.now();
-      try {
-        document.write('<script src="' + promoUrl + '"><\/script>');
-      } catch (e) {
-        var promoScript = document.createElement('script');
-        promoScript.src = promoUrl;
-        promoScript.async = false;
-        (document.head || document.getElementsByTagName('head')[0]).appendChild(promoScript);
-      }
-    })();
+    var v = window.__APP_VER || Date.now();
+    document.write('<script src="sound.js?v=' + v + '"><\/script>');
+    document.write('<script src="promos.js?v=' + v + '"><\/script>');
+    document.write('<script src="game.js?v=' + v + '"><\/script>');
   </script>
-  <script src="game.js"></script>
 </body>
 </html>
