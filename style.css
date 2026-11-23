@@ -78,22 +78,22 @@ html, body {
 
 .hall-scene {
   position: relative;
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+  aspect-ratio: 3 / 4;
+  margin: 0 auto;
   flex: 1 1 auto;
-  min-height: 172px;
+  min-height: 0;
   border-radius: 14px;
   border: 3px solid #4a3421;
   overflow: hidden;
   background-color: #120b06;
-  background-image:
-    url('assets/bg-tavern.jpg'),
-    radial-gradient(circle at 50% 34%, rgba(255, 178, 74, 0.28) 0%, rgba(16, 10, 6, 0.9) 68%),
-    radial-gradient(circle at 10% 88%, rgba(184, 134, 11, 0.18) 0%, transparent 55%),
-    radial-gradient(circle at 88% 12%, rgba(255, 132, 32, 0.2) 0%, transparent 55%),
-    repeating-linear-gradient(90deg, #1d1209 0px, #1d1209 14px, #150c07 14px, #150c07 28px),
-    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.22) 0px, rgba(0, 0, 0, 0.22) 2px, transparent 2px, transparent 20px);
-  background-size: cover, cover, cover, cover, auto, auto;
-  background-position: center, center, center, center, center, center;
-  box-shadow: inset 0 0 46px rgba(0, 0, 0, 0.9), 0 8px 22px rgba(0, 0, 0, 0.65);
+  background-image: url('assets/bg-tavern.jpg');
+  background-size: 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+  box-shadow: inset 0 0 36px rgba(0, 0, 0, 0.75), 0 8px 22px rgba(0, 0, 0, 0.65);
 }
 
 /* Живой свет, огонь и полумрак зала */
@@ -101,7 +101,7 @@ html, body {
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: linear-gradient(180deg, rgba(8, 5, 2, 0.62) 0%, rgba(8, 5, 2, 0.1) 42%, rgba(8, 5, 2, 0.72) 100%);
+  background: radial-gradient(circle at 50% 50%, transparent 58%, rgba(8, 5, 2, 0.55) 100%);
   pointer-events: none;
 }
 
@@ -146,6 +146,7 @@ html, body {
 
 /* Мебель зала: стойка, бочка у входа и лавка */
 .hall-prop {
+  display: none;
   position: absolute;
   z-index: 3;
   border-radius: 8px;
@@ -182,95 +183,87 @@ html, body {
 
 .hall-hint.hidden { opacity: 0; }
 
-/* Соперники — портретные медальоны в разных зонах зала */
+/* Соперники — полноростовые вырезанные спрайты поверх фона зала */
 .npc-layer { position: absolute; inset: 0; z-index: 6; }
 
 .npc-spot {
   position: absolute;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
   padding: 0;
   margin: 0;
   border: none;
   background: none;
-  color: inherit;
-  font-family: inherit;
   cursor: pointer;
-  transform-origin: 50% 100%;
-  transition: transform 0.18s ease, filter 0.18s ease;
+  transition: transform 0.2s ease, filter 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.npc-spot:hover, .npc-spot.selected { transform: scale(1.09); }
-.npc-spot:active { transform: scale(1.04); }
-.npc-spot.locked { filter: grayscale(0.55) brightness(0.86); }
-
-.npc-sivka { left: 6%; bottom: 6%; }
-.npc-ignat { left: 5%; top: 5%; }
-.npc-yashka { right: 5%; top: 43%; }
-.npc-lovchiy { right: 5%; top: 5%; }
-
-.npc-glow {
-  position: absolute;
-  left: 50%;
-  top: 30px;
-  width: 106px;
-  height: 106px;
-  margin: -53px 0 0 -53px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 210, 100, 0.5) 0%, rgba(255, 176, 48, 0.2) 46%, transparent 72%);
-  opacity: 0;
-  transition: opacity 0.25s ease;
-  pointer-events: none;
-}
-
-.npc-spot:hover .npc-glow, .npc-spot.selected .npc-glow {
-  opacity: 1;
-  animation: haloPulse 2.2s ease-in-out infinite;
-}
-
-.npc-medallion {
-  position: relative;
-  width: 58px;
-  height: 68px;
-  border-radius: 29px 29px 11px 11px;
-  overflow: hidden;
-  border: 2px solid #a67c48;
-  background: radial-gradient(circle at 38% 26%, #4a3421 0%, #1a1009 78%);
-  box-shadow: inset 0 -8px 14px rgba(0, 0, 0, 0.7), 0 5px 12px rgba(0, 0, 0, 0.6);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.npc-spot:hover .npc-medallion, .npc-spot.selected .npc-medallion {
-  border-color: #ffd700;
-  box-shadow: 0 0 16px rgba(255, 215, 0, 0.6), inset 0 -8px 14px rgba(0, 0, 0, 0.6);
-}
-
-.npc-svg, .npc-photo {
-  position: absolute;
-  inset: 0;
+.npc-sprite,
+.npc-svg-fallback {
   width: 100%;
   height: 100%;
+  object-fit: contain;
   display: block;
+  pointer-events: none;
+  transition: filter 0.22s ease, transform 0.22s ease;
 }
 
-.npc-photo { object-fit: cover; border-radius: inherit; }
+.npc-ignat   { left: 25.8%; top: 36.8%; width: 24.4%; height: 38.5%; z-index: 6; }
+.npc-yashka  { left: 52.8%; top: 46.5%; width: 28.0%; height: 43.1%; z-index: 7; }
+.npc-lovchiy { left: 74.8%; top: 48.0%; width: 25.2%; height: 35.1%; z-index: 7; }
+.npc-sivka   { left: 3.7%;  top: 53.7%; width: 41.3%; height: 37.9%; z-index: 8; }
+
+.npc-spot:hover,
+.npc-spot.selected {
+  z-index: 10;
+}
+
+.npc-spot:hover .npc-sprite,
+.npc-spot.selected .npc-sprite {
+  transform: scale(1.03);
+  filter:
+    drop-shadow(0 0 2px #ffd700)
+    drop-shadow(0 0 8px rgba(255, 215, 0, 0.85))
+    drop-shadow(0 0 18px rgba(255, 175, 40, 0.55));
+}
+
+.npc-spot.locked .npc-sprite {
+  filter: grayscale(0.55) brightness(0.82);
+}
+
+.npc-spot.locked:hover .npc-sprite,
+.npc-spot.locked.selected .npc-sprite {
+  filter:
+    grayscale(0.35)
+    drop-shadow(0 0 2px #e0776f)
+    drop-shadow(0 0 8px rgba(224, 119, 111, 0.75));
+}
 
 .npc-plate {
-  display: flex;
+  position: absolute;
+  left: 50%;
+  bottom: 4%;
+  transform: translateX(-50%);
+  z-index: 2;
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 1px 6px 2px;
-  border-radius: 8px;
-  background: linear-gradient(180deg, rgba(32, 20, 11, 0.92) 0%, rgba(13, 8, 4, 0.92) 100%);
-  border: 1px solid rgba(212, 175, 55, 0.45);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.55);
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: 7px;
+  background: rgba(18, 11, 6, 0.9);
+  border: 1px solid rgba(212, 175, 55, 0.55);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.75);
   white-space: nowrap;
-  transition: border-color 0.2s ease;
 }
 
-.npc-spot:hover .npc-plate, .npc-spot.selected .npc-plate { border-color: #ffd700; }
+.npc-spot:hover .npc-plate,
+.npc-spot.selected .npc-plate {
+  border-color: #ffd700;
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.npc-ignat .npc-plate   { bottom: 2%; }
+.npc-lovchiy .npc-plate { bottom: 6%; }
+.npc-sivka .npc-plate   { bottom: 16%; }
 
 .npc-plate-name { font-family: 'Cinzel', serif; font-size: 9px; font-weight: 700; color: #f0d9a8; }
 .npc-plate-bet { font-size: 8.5px; font-weight: 700; color: #ffd700; }
@@ -281,7 +274,7 @@ html, body {
   position: absolute;
   left: 50%;
   top: 50%;
-  z-index: 12;
+  z-index: 20;
   width: min(252px, 80%);
   padding: 11px 12px 12px;
   border-radius: 12px;
