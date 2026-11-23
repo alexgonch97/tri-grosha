@@ -326,8 +326,12 @@ async function redeemPromo(rawCode, forceReload = false) {
   return true;
 }
 /* Синхронизация рефералов с API-сервером (до подключения Worker'а — офлайн-заглушка) */
-function syncReferralsWithServer() {
+let lastRefSyncAt = 0;
+function syncReferralsWithServer(force = false) {
   if (!isRefApiReady()) return;
+  // Защита от лагов и спама: без force сетевой запрос идёт не чаще одного раза в 10 секунд
+  if (!force && Date.now() - lastRefSyncAt < 10000) return;
+  lastRefSyncAt = Date.now();
   let initData = '', startParam = '';
   try { initData = window.Telegram?.WebApp?.initData || ''; } catch (e) { initData = ''; }
   try { startParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param || ''; } catch (e) { startParam = ''; }
@@ -337,8 +341,16 @@ function syncReferralsWithServer() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ initData, startParam })
     })
-      .then(res => (res && res.ok ? res.json() : null))
-      .then(data => { if (data && data.ok) applyServerReferralData(data); })
+      .then(res => {
+        if (!res || !res.ok) { console.warn('Ref sync error:', res); return null; }
+        return res.json();
+      })
+      .then(data => {
+        if (!data) return;
+        // Ошибку сервера логируем (например, проблема с BOT_TOKEN), но игру не ломаем
+        if (data.ok === false) { console.warn('Ref sync error:', data); return; }
+        if (data.ok) applyServerReferralData(data);
+      })
       .catch(() => {});
   } catch (e) { /* сеть недоступна — попробуем при следующем запуске */ }
 }
@@ -1174,8 +1186,23 @@ function loadActiveMatch() {
     document.getElementById('opponentBadge').textContent = opp.fullName + ' · ставка ' + opp.bet + ' 🪙';
     document.getElementById('gameOverModal').classList.remove('active');
     showScreen('game'); renderTable();
-    if (gameState.currentTurn === 'player') { startPlayerTurn(); }
-    else { startAITurn(); }
+    // Полное сохранение незавершённого хода: если в сохранении остались кости на столе,
+    // НЕ начинаем ход заново, а продолжаем с восстановленного состояния (playerTurn/dice/playerTurnDice/rolledThisTurn).
+    if (gameState.currentTurn === 'player') {
+      if (gameState.dice.length === 0) { startPlayerTurn(); }
+      else {
+        document.getElementById('aiStatusText').textContent = 'Ваш ход! Продолжайте бросок.';
+        updateSelectionHint(); renderTable();
+      }
+    } else {
+      if (gameState.dice.length === 0) { startAITurn(); }
+      else {
+        document.getElementById('aiStatusText').textContent = opp.name + ' продолжает ход…';
+        document.getElementById('comboText').textContent = 'Ход соперника: ' + opp.name;
+        renderTable();
+        setTimeout(processAITurn, aiSpeed >= 1 ? 900 : 250);
+      }
+    }
     updateSkipButton(); updateSpeedToggleUI();
     return true;
   } catch(e) { clearActiveMatch(); return false; }
@@ -1347,9 +1374,9 @@ document.getElementById('promoBtn').addEventListener('click', () => {
 document.getElementById('closePromoBtn').addEventListener('click', () => { document.getElementById('promoModal').classList.remove('active'); renderTavern(); });
 document.getElementById('promoApplyBtn').addEventListener('click', () => { soundManager.init(); submitPromoInput(); });
 document.getElementById('promoInput').addEventListener('keydown', (e) => { if (e.key !== 'Enter') return; submitPromoInput(); });
-// Открытие окна друзей НЕ дёргает сеть: синхронизация с сервером рефералов идёт
-// ровно один раз при старте игры и вручную — по кнопке «Ввести» (submitFriendCode).
-document.getElementById('friendsBtn').addEventListener('click', () => { soundManager.init(); renderFriendsModal(); document.getElementById('friendsModal').classList.add('active'); });
+// Открытие окна друзей подтягивает актуальный счётчик/список/награды с сервера,
+// но не чаще одного раза в 10 секунд (rate-limit внутри syncReferralsWithServer).
+document.getElementById('friendsBtn').addEventListener('click', () => { soundManager.init(); renderFriendsModal(); document.getElementById('friendsModal').classList.add('active'); syncReferralsWithServer(false); });
 document.getElementById('closeFriendsBtn').addEventListener('click', () => { document.getElementById('friendsModal').classList.remove('active'); renderTavern(); });
 document.getElementById('refCopyBtn').addEventListener('click', () => { soundManager.init(); copyReferralLink(); });
 // Ввод кода друга: только через сервер (локальной накрутки больше нет)
