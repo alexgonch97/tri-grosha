@@ -136,13 +136,11 @@ function renderOpponents() {
     spot.setAttribute('aria-label', opp.fullName + ' — ставка ' + opp.bet + ' грошей');
     spot.innerHTML = '<img class="npc-sprite" src="' + opp.photo + '" alt="' + opp.fullName + '" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">' + opp.svg.replace('<svg ', '<svg class="npc-svg-fallback" style="display:none" ') + '<span class="npc-plate"><span class="npc-plate-name">' + opp.name + '</span><span class="npc-plate-bet">' + opp.bet + ' 🪙</span></span>';
     spot.addEventListener('click', () => onNpcClick(opp));
-    spot.addEventListener('pointerenter', (e) => { if (e.pointerType !== 'mouse') return; previewNpc(opp); });
     layer.appendChild(spot);
   });
 }
 
 function highlightNpc(id) { document.querySelectorAll('.npc-spot').forEach(el => el.classList.toggle('selected', Boolean(id) && el.dataset.npc === id)); }
-function previewNpc(opp) { if (matchState === 'playing' || selectedNpcId === opp.id || previewNpcId === opp.id) return; previewNpcId = opp.id; cardJoke = ''; showNpcCard(opp); }
 function selectNpc(opp, withSound) { if (selectedNpcId !== opp.id) cardJoke = ''; selectedNpcId = opp.id; previewNpcId = opp.id; highlightNpc(opp.id); showNpcCard(opp); if (withSound) { soundManager.init(); soundManager.playSelect(); triggerHaptic('impact', 'light'); } }
 function onNpcClick(opp) { if (matchState === 'playing') return; if (selectedNpcId === opp.id) { startMatch(opp); return; } selectNpc(opp, true); }
 

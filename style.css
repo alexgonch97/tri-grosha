@@ -78,12 +78,11 @@ html, body {
 
 .hall-scene {
   position: relative;
-  width: auto;
-  height: 100%;
-  max-width: 100%;
+  width: 100%;
+  height: auto;
   aspect-ratio: 3 / 4;
   margin: 0 auto;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-height: 0;
   border-radius: 14px;
   border: 3px solid #4a3421;
@@ -204,7 +203,18 @@ html, body {
   object-fit: contain;
   display: block;
   pointer-events: none;
-  transition: filter 0.22s ease, transform 0.22s ease;
+  transition: transform 0.18s ease;
+}
+
+/* Плавное растворение нижнего среза PNG за бочкой (Сивка) и столом (Ловчий), чтобы свечение не обрывалось резкой линией */
+.npc-sivka .npc-sprite {
+  -webkit-mask-image: linear-gradient(to bottom, #000 76%, transparent 98%);
+  mask-image: linear-gradient(to bottom, #000 76%, transparent 98%);
+}
+
+.npc-lovchiy .npc-sprite {
+  -webkit-mask-image: linear-gradient(to bottom, #000 62%, transparent 95%);
+  mask-image: linear-gradient(to bottom, #000 62%, transparent 95%);
 }
 
 .npc-ignat   { left: 25.8%; top: 36.8%; width: 24.4%; height: 38.5%; z-index: 6; }
@@ -212,6 +222,7 @@ html, body {
 .npc-lovchiy { left: 74.8%; top: 48.0%; width: 25.2%; height: 35.1%; z-index: 7; }
 .npc-sivka   { left: 3.7%;  top: 53.7%; width: 41.3%; height: 37.9%; z-index: 8; }
 
+/* Одинаково яркая, безопасная для GPU подсветка при наведении и выборе */
 .npc-spot:hover,
 .npc-spot.selected {
   z-index: 10;
@@ -220,22 +231,18 @@ html, body {
 .npc-spot:hover .npc-sprite,
 .npc-spot.selected .npc-sprite {
   transform: scale(1.03);
-  filter:
-    drop-shadow(0 0 2px #ffd700)
-    drop-shadow(0 0 8px rgba(255, 215, 0, 0.85))
-    drop-shadow(0 0 18px rgba(255, 175, 40, 0.55));
+  filter: drop-shadow(0 0 6px #ffd700) brightness(1.12);
 }
 
+/* Дорогие соперники (не хватает грошей) не тускнеют в ноль, а при выборе красиво подсвечиваются янтарно-красным контуром */
 .npc-spot.locked .npc-sprite {
-  filter: grayscale(0.55) brightness(0.82);
+  filter: saturate(0.75) brightness(0.92);
 }
 
 .npc-spot.locked:hover .npc-sprite,
 .npc-spot.locked.selected .npc-sprite {
-  filter:
-    grayscale(0.35)
-    drop-shadow(0 0 2px #e0776f)
-    drop-shadow(0 0 8px rgba(224, 119, 111, 0.75));
+  transform: scale(1.03);
+  filter: saturate(0.9) drop-shadow(0 0 6px #ff9d3b) brightness(1.08);
 }
 
 .npc-plate {
@@ -261,7 +268,8 @@ html, body {
   box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
 }
 
-.npc-ignat .npc-plate   { bottom: 2%; }
+/* Поднимаем табличку Игната на пояс, чтобы не касалась плеча Сивки */
+.npc-ignat .npc-plate   { bottom: 18%; }
 .npc-lovchiy .npc-plate { bottom: 6%; }
 .npc-sivka .npc-plate   { bottom: 16%; }
 
@@ -269,11 +277,11 @@ html, body {
 .npc-plate-bet { font-size: 8.5px; font-weight: 700; color: #ffd700; }
 .npc-spot.locked .npc-plate-bet { color: #e0776f; }
 
-/* Карточка-свиток выбранного соперника */
+/* Карточка-свиток выбранного соперника: поднята в верхнюю часть зала (над головами), чтобы не перекрывать персонажа */
 .npc-scroll {
   position: absolute;
   left: 50%;
-  top: 50%;
+  top: 28%;
   z-index: 20;
   width: min(252px, 80%);
   padding: 11px 12px 12px;
