@@ -147,6 +147,8 @@ function onNpcClick(opp) { if (matchState === 'playing') return; if (selectedNpc
 
 function showNpcCard(opp) {
   const card = document.getElementById('npcScroll'); if (!card || !opp) return;
+  /* Положение свитка задаётся только в style.css — снимаем возможные инлайн-координаты */
+  card.style.left = ''; card.style.top = ''; card.style.right = ''; card.style.bottom = ''; card.style.transform = '';
   const affordable = gold >= opp.bet;
   if (!cardJoke) cardJoke = (opp.joke && opp.joke.length) ? opp.joke[Math.floor(Math.random() * opp.joke.length)] : '';
   card.className = 'npc-scroll show';

@@ -303,29 +303,32 @@ html, body {
 .npc-plate-bet { font-size: 8.5px; font-weight: 700; color: #ffd700; }
 .npc-spot.locked .npc-plate-bet { color: #e0776f; }
 
-/* Карточка-свиток выбранного соперника: поднята в верхнюю часть зала (над головами), чтобы не перекрывать персонажа */
+/* Карточка-свиток выбранного соперника: компактная плашка в правом верхнем углу зала.
+   Положение задаётся ТОЛЬКО здесь (никаких инлайн-координат из game.js). */
 .npc-scroll {
   position: absolute;
-  left: 50%;
-  top: 28%;
+  left: auto;
+  right: 3%;
+  top: 3.5%;
+  transform: none;
+  width: 55%;
+  max-width: 220px;
+  padding: 9px 10px;
   z-index: 20;
-  width: min(252px, 80%);
-  padding: 11px 12px 12px;
-  border-radius: 12px;
+  border-radius: 10px;
   background: linear-gradient(180deg, #fdf3d8 0%, #ecd9ac 100%);
   border: 2px solid #8b6b3e;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.75);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.8);
   color: #2a1c10;
   opacity: 0;
   pointer-events: none;
-  transform: translate(-50%, -50%) scale(0.9);
   transition: opacity 0.22s ease, transform 0.22s ease;
 }
 
 .npc-scroll.show {
   opacity: 1;
   pointer-events: auto;
-  transform: translate(-50%, -50%) scale(1);
+  transform: none;
 }
 
 .npc-scroll::before, .npc-scroll::after {
@@ -345,29 +348,91 @@ html, body {
 .scroll-head {
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  padding-bottom: 5px;
-  margin-bottom: 6px;
+  gap: 0;
+  padding-bottom: 4px;
+  margin-bottom: 5px;
   border-bottom: 1px solid rgba(139, 107, 62, 0.5);
 }
 
-.scroll-name { font-family: 'Cinzel', serif; font-size: 13px; font-weight: 900; color: #5a3a12; }
-.scroll-title { font-size: 10px; font-style: italic; color: #7a6247; }
-.scroll-line { margin: 0 0 7px; font-size: 11.5px; line-height: 1.35; color: #3f2c18; }
+/* Увеличиваем и уплотняем текст внутри компактного свитка
+   (селекторы из ТЗ + фактические классы разметки из game.js) */
+.npc-scroll-name,
+.scroll-name,
+.npc-scroll h3 {
+  font-family: 'Cinzel', serif;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1.15;
+  margin: 0 0 2px 0;
+  color: #5a3a12;
+}
 
+.npc-scroll-role,
+.npc-scroll-sub,
+.scroll-title {
+  font-size: 11px;
+  font-style: italic;
+  line-height: 1.2;
+  margin: 0 0 5px 0;
+  color: #7a6247;
+}
+
+.npc-scroll-quote,
+.scroll-line {
+  font-size: 11.5px;
+  line-height: 1.25;
+  margin: 0 0 6px 0;
+  color: #3f2c18;
+}
+
+.npc-scroll-bet-row,
 .scroll-bet {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
-  font-size: 11px;
+  font-size: 12.5px;
+  margin-bottom: 6px;
   color: #5a3a12;
 }
 
+.npc-scroll-bet-row strong,
 .scroll-bet strong { font-family: 'Cinzel', serif; font-size: 13px; color: #8b1a1a; }
-.npc-scroll .scroll-play { width: 100%; font-size: 12px; padding: 10px 6px; }
-.scroll-tip { margin-top: 6px; font-size: 9.5px; text-align: center; color: #7a6247; }
-.scroll-hint { margin-top: 6px; font-size: 10px; text-align: center; font-weight: 700; color: #8b1a1a; }
+
+.npc-scroll .btn,
+.npc-scroll #playNpcBtn,
+.npc-scroll .scroll-play {
+  width: 100%;
+  padding: 7px 6px;
+  font-size: 11.5px;
+  line-height: 1.15;
+  white-space: normal;
+}
+
+#playNpcBtn {
+  width: 100%;
+  padding: 7px 6px;
+  font-size: 11.5px;
+  line-height: 1.15;
+  white-space: normal;
+}
+
+.npc-scroll-hint,
+.scroll-hint {
+  font-size: 10.5px;
+  line-height: 1.2;
+  margin-top: 5px;
+  text-align: center;
+  font-weight: 700;
+  color: #8b1a1a;
+}
+
+.scroll-tip {
+  margin-top: 5px;
+  font-size: 10.5px;
+  line-height: 1.2;
+  text-align: center;
+  color: #7a6247;
+}
 
 .tavern-menu {
   flex: 0 0 auto;
