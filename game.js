@@ -142,14 +142,15 @@ function renderOpponents() {
 
 function highlightNpc(id) { document.querySelectorAll('.npc-spot').forEach(el => el.classList.toggle('selected', Boolean(id) && el.dataset.npc === id)); }
 function selectNpc(opp, withSound) { if (selectedNpcId !== opp.id) cardJoke = ''; selectedNpcId = opp.id; previewNpcId = opp.id; highlightNpc(opp.id); showNpcCard(opp); if (withSound) { soundManager.init(); soundManager.playSelect(); triggerHaptic('impact', 'light'); } }
-function onNpcClick(opp) { if (matchState === 'playing') return; if (selectedNpcId === opp.id) { startMatch(opp); return; } selectNpc(opp, true); }
+function closeNpcScroll() { clearNpcSelection(); }
+function onNpcClick(opp) { if (matchState === 'playing') return; if (selectedNpcId === opp.id) { closeNpcScroll(); return; } selectNpc(opp, true); }
 
 function showNpcCard(opp) {
   const card = document.getElementById('npcScroll'); if (!card || !opp) return;
   const affordable = gold >= opp.bet;
   if (!cardJoke) cardJoke = (opp.joke && opp.joke.length) ? opp.joke[Math.floor(Math.random() * opp.joke.length)] : '';
   card.className = 'npc-scroll show';
-  card.innerHTML = '<div class="scroll-head"><span class="scroll-name">' + opp.fullName + '</span><span class="scroll-title">' + opp.title + '</span></div>' + (cardJoke ? '<p class="scroll-line">«' + cardJoke + '»</p>' : '') + '<div class="scroll-bet"><span>Ставка:</span><strong>' + opp.bet + ' 🪙</strong></div><button type="button" class="btn btn-primary scroll-play"' + (affordable ? '' : ' disabled') + '>Сыграть (' + opp.bet + ' грошей)</button>' + (affordable ? '<div class="scroll-tip">Нажмите на соперника ещё раз — партия начнётся.</div>' : '<div class="scroll-hint">В кошеле лишь ' + gold + ' грошей — попросите милостыню у входа.</div>');
+  card.innerHTML = '<div class="scroll-head"><span class="scroll-name">' + opp.fullName + '</span><span class="scroll-title">' + opp.title + '</span></div>' + (cardJoke ? '<p class="scroll-line">«' + cardJoke + '»</p>' : '') + '<div class="scroll-bet"><span>Ставка:</span><strong>' + opp.bet + ' 🪙</strong></div><button type="button" class="btn btn-primary scroll-play"' + (affordable ? '' : ' disabled') + '>Сыграть (' + opp.bet + ' грошей)</button>' + (affordable ? '<div class="scroll-tip">Нажмите «Сыграть», чтобы начать партию.</div>' : '<div class="scroll-hint">В кошеле лишь ' + gold + ' грошей — попросите милостыню у входа.</div>');
   const playBtn = card.querySelector('.scroll-play'); if (playBtn && affordable) playBtn.addEventListener('click', () => startMatch(opp));
   const hint = document.getElementById('hallHint'); if (hint) hint.classList.add('hidden');
 }
