@@ -1373,6 +1373,18 @@ html, body {
   box-shadow: inset 0 0 46px rgba(255, 170, 60, 0.28), inset 0 0 30px rgba(0, 0, 0, 0.85), 0 8px 24px rgba(0, 0, 0, 0.7);
 }
 
+/* Поэтапная смена фона зала. Правила идут строго по возрастанию уровня
+   (candles → oak → crest), поэтому каждый следующий уровень перекрывает
+   предыдущий — зал обновляется последовательно, без пропуска этапов. */
+/* #1: свечи и шандал уже нарисованы прямо на фоне bg-tavern-1.jpg */
+#app.upg-candles .hall-scene {
+  background-image: url('assets/bg-tavern-1.jpg');
+}
+
+/* Старые CSS-заглушки свечей отключены: живых остаются только искры (.spark).
+   Свечи и шандал теперь часть фонового изображения. */
+#app.upg-candles .candle { display: none !important; }
+
 .hall-candles, .hall-sparks, .table-candles {
   position: absolute;
   inset: 0;
@@ -1475,6 +1487,15 @@ html, body {
 
 #app.upg-oak .upg-oak-layer { display: block; }
 
+/* #2: дубовая стойка и бочонки уже нарисованы прямо на фоне bg-tavern-2.jpg.
+   Правило идёт после .upg-candles, поэтому фон уровня 1 перекрывается. */
+#app.upg-oak .hall-scene {
+  background-image: url('assets/bg-tavern-2.jpg');
+}
+
+/* Резная надпись .oak-carving больше не нужна — она нарисована на bg-tavern-2.jpg */
+.oak-carving { display: none !important; }
+
 .oak-frame {
   position: absolute;
   inset: 4px;
@@ -1541,6 +1562,12 @@ html, body {
 }
 
 /* #4 «Уездная грамота и герб»: герб над названием и корона у имени игрока */
+/* #4: уездная грамота и герб уже нарисованы прямо на фоне bg-tavern-3.jpg.
+   Правило идёт последним в каскаде, поэтому перекрывает фоны уровней 1 и 2. */
+#app.upg-crest .hall-scene {
+  background-image: url('assets/bg-tavern-3.jpg');
+}
+
 .user-line {
   display: flex;
   align-items: center;
