@@ -217,10 +217,14 @@ html, body {
   transition: transform 0.18s ease;
 }
 
-/* Плавное растворение нижнего среза PNG за бочкой (Сивка) и столом (Ловчий), чтобы свечение не обрывалось резкой линией */
+/* У Сивки маска отключена: кости ложатся на обод бочек, поэтому нижний срез
+   спрайта не растворяется (точные родные координаты см. в фиксе ниже).
+   Плавное растворение нижнего среза PNG оставлено только столу (Ловчий),
+   чтобы свечение не обрывалось резкой линией. */
 .npc-sivka .npc-sprite {
-  -webkit-mask-image: linear-gradient(to bottom, #000 76%, transparent 98%);
-  mask-image: linear-gradient(to bottom, #000 76%, transparent 98%);
+  -webkit-mask-image: none;
+  mask-image: none;
+  object-position: center;
 }
 
 .npc-lovchiy .npc-sprite {
@@ -235,7 +239,7 @@ html, body {
 .npc-ignat   { left: 25.8%; top: 36.8%; width: 24.4%; height: 38.5%; z-index: 6; }
 .npc-yashka  { left: 52.8%; top: 46.5%; width: 28.0%; height: 43.1%; z-index: 7; }
 .npc-lovchiy { left: 74.8%; top: 48.0%; width: 25.2%; height: 35.1%; z-index: 7; }
-.npc-sivka   { left: 3.7%;  top: 56.6%; width: 41.3%; height: 37.9%; z-index: 8; }
+.npc-sivka   { left: 3.7%;  top: 53.7%; width: 41.3%; height: 37.9%; z-index: 8; }
 
 /* Сивка перекрывает Игната своим большим спрайтом, поэтому срезаем у её
    зоны нажатия ТОЛЬКО пустой верхний правый угол над головой — клики по Игнату
@@ -2194,8 +2198,9 @@ html, body {
 }
 
 /* 2. Возвращаем ноги Ловчему (снимаем маску, растворяя нижнюю часть спрайта).
-   Сивка опущена локтями ровно на обод бочек: top 56.6% (см. и базовые
-   .npc-sivka выше — обе записи синхронизированы). */
+   Сивка стоит в родной калиброванной рамке: top 53.7% (см. и базовые
+   .npc-sivka выше — обе записи синхронизированы), поэтому её кости ложатся
+   на обод бочек, и спрайт не проваливается вниз в бочку. */
 .npc-lovchiy .npc-sprite {
   -webkit-mask-image: none !important;
   mask-image: none !important;
@@ -2203,15 +2208,17 @@ html, body {
 }
 
 .npc-sivka {
-  left: 3.7%;
-  top: 56.6%;
-  width: 41.3%;
-  height: 37.9%;
+  left: 3.7% !important;
+  top: 53.7% !important;
+  width: 41.3% !important;
+  height: 37.9% !important;
   z-index: 8;
 }
 
 .npc-sivka .npc-sprite {
-  object-position: center;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+  object-position: center !important;
 }
 
 /* 3. Компактнее верхняя панель игрока: меньше высоты, крупнее читаемые шрифты.
@@ -2250,39 +2257,41 @@ html, body {
   font-size: 14px !important;
 }
 
-/* 4. Сжимаем блок «Постоялый двор «Три Гроша»» в компактную горизонтальную
-   плашку: герб слева, название и статус пропуска справа, без цитаты и отступов.
-   Высота строго по контенту (height/max-height не фиксируются, flex не сжимает
-   плашку), поэтому внешняя золотая рамка обхватывает герб, однострочный
-   заголовок и бейдж пропуска и ничего не перерезает.
+/* 4. Сжимаем блок «Постоялый двор «Три Гроша»» в компактную строго
+   ОДНОСТРОЧНУЮ горизонтальную плашку: герб слева, название по центру
+   (тянется, при нехватке места аккуратно усекается многоточием) и бейдж
+   «Пропуск в Сезон 2: ОТКРЫТ» справа. flex-wrap: nowrap + nowrap у детей
+   запрещают перенос на вторую строку, поэтому шапка экономит место по
+   вертикали. Высота строго по контенту — внешняя золотая рамка обхватывает
+   герб, заголовок и бейдж и ничего не перерезает.
    Реальные классы — .tavern-banner / .tavern-crest / .season-badge. */
 .tavern-banner,
 .inn-header,
 .hall-banner {
   display: flex !important;
   flex-direction: row !important;
-  flex-wrap: wrap !important;
+  flex-wrap: nowrap !important;
   align-items: center !important;
   justify-content: space-between !important;
   text-align: left !important;
-  padding: 5px 10px !important;
+  padding: 4px 8px !important;
   margin: 0 !important;
   height: auto !important;
   max-height: none !important;
-  min-height: auto !important;
+  min-height: 0 !important;
   flex: 0 0 auto !important;
   overflow: visible !important;
-  gap: 8px !important;
+  gap: 6px !important;
 }
 
 .tavern-banner .crest-badge,
 .inn-header .crest-badge,
 .hall-banner .crest-badge,
 .tavern-crest {
-  width: 26px !important;
-  height: 26px !important;
+  width: 22px !important;
+  height: 22px !important;
   margin: 0 !important;
-  flex: 0 0 auto !important;
+  flex: 0 0 22px !important;
 }
 
 /* Вложенные элементы плашки не рисуют собственных рамок: остаётся только
@@ -2300,10 +2309,15 @@ html, body {
 .tavern-banner h2,
 .inn-title,
 .hall-title {
-  font-size: 13px !important;
-  line-height: 1.15 !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  text-align: left !important;
+  font-size: 11px !important;
+  line-height: 1.2 !important;
   margin: 0 !important;
   white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
 }
 
 /* Длинную художественную цитату в компактной шапке скрываем — место под сцену */
@@ -2317,29 +2331,59 @@ html, body {
 .season-badge,
 .season-pass-badge,
 .season2-badge {
-  padding: 2px 7px !important;
-  font-size: 10px !important;
-  margin: 0 !important;
+  flex: 0 0 auto !important;
+  font-size: 9px !important;
+  padding: 2px 5px !important;
   white-space: nowrap !important;
-  flex: 0 0 auto !important;
+  margin: 0 !important;
 }
 
-/* 5. Растягиваем основную сцену зала на всё свободное место между компактной
-   шапкой и нижним меню, сохраняя строгую пропорцию 3:4. */
+/* 5. Компонуем главный экран таверны так, чтобы на телефоне компактная шапка,
+   сцена зала и ВСЕ 4 ряда нижних кнопок (Объявления/Правила, Обустройство/
+   Кости, Промокоды/Друзья, Достижения) всегда помещались в экран без обрезки
+   снизу. #tavernScreen — колонка на всю высоту: шапка и меню не сжимаются
+   (flex: 0 0 auto), а сцена зала забирает всё оставшееся место и держит строгую
+   пропорцию 3:4 (aspect-ratio), поэтому пропорция сохраняется и на телефоне,
+   и на ПК. */
 #tavernScreen {
-  gap: 5px !important;
+  height: 100% !important;
+  max-height: 100dvh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  overflow: hidden !important;
+  gap: 4px !important;
   padding-top: 4px !important;
-  padding-bottom: 6px !important;
+  padding-bottom: 5px !important;
 }
 
-.hall-scene {
-  position: relative !important;
-  width: min(100%, calc((100dvh - 190px) * 0.75)) !important;
-  height: auto !important;
-  max-width: 100% !important;
-  aspect-ratio: 3 / 4 !important;
+.tavern-menu {
   flex: 0 0 auto !important;
-  margin: auto !important;
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 5px !important;
+}
+
+.tavern-menu .btn {
+  padding: 6px 4px !important;
+  font-size: 10.5px !important;
+}
+
+/* Телефон (до 767px): сцена зала занимает всю свободную высоту между шапкой и
+   меню, а ширина считается из пропорции 3:4 (height × 0.75). min-height: 0
+   позволяет сцене сжиматься, поэтому нижнее меню всегда видно целиком и ни
+   одна кнопка не обрезается снизу. */
+@media (max-width: 767px) {
+  .hall-scene {
+    position: relative !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    width: auto !important;
+    max-width: 100% !important;
+    aspect-ratio: 3 / 4 !important;
+    margin: 0 auto !important;
+  }
 }
 
 /* ==========================================================================
@@ -2353,6 +2397,20 @@ html, body {
     border-left: 1px solid rgba(212, 175, 55, 0.25);
     border-right: 1px solid rgba(212, 175, 55, 0.25);
     box-shadow: 0 0 50px rgba(0, 0, 0, 0.85);
+  }
+
+  /* ПК: сцена зала держит строгую пропорцию 3:4 — ширина считается из
+     доступной высоты (с запасом под шапку и нижнее меню), а если окно низкое,
+     сцена сжимается (flex-shrink), чтобы кнопки не обрезались снизу. */
+  .hall-scene {
+    position: relative !important;
+    width: min(100%, calc((100dvh - 320px) * 0.75)) !important;
+    height: auto !important;
+    max-width: 100% !important;
+    aspect-ratio: 3 / 4 !important;
+    flex: 0 1 auto !important;
+    min-height: 0 !important;
+    margin: auto !important;
   }
 
   .player-name {
@@ -2378,6 +2436,7 @@ html, body {
     font-size: 15px !important;
   }
 
+  .season-badge,
   .season-pass-badge,
   .season2-badge {
     font-size: 12px !important;
