@@ -81,7 +81,6 @@ html, body {
   position: relative;
   flex: 1 1 auto;
   min-height: 0;
-  height: 100%;
   width: auto;
   max-width: 100%;
   aspect-ratio: 3 / 4;
@@ -2306,11 +2305,68 @@ html, body {
 }
 
 .hall-scene {
-  flex: 1 1 auto !important;
-  min-height: 0 !important;
-  height: 100% !important;
-  width: auto !important;
+  position: relative !important;
+  width: min(100%, calc((100dvh - 190px) * 0.75)) !important;
+  height: auto !important;
   max-width: 100% !important;
   aspect-ratio: 3 / 4 !important;
-  margin: 0 auto !important;
+  flex: 0 0 auto !important;
+  margin: auto !important;
+}
+
+/* ==========================================================================
+   ПК и широкие экраны: игра больше не сжимается в узкую телефонную колонку
+   посреди монитора, а шапка и нижние кнопки комфортно читаются на десктопе.
+   ========================================================================== */
+@media (min-width: 768px) {
+  #app {
+    max-width: 680px !important;
+    margin: 0 auto !important;
+    border-left: 1px solid rgba(212, 175, 55, 0.25);
+    border-right: 1px solid rgba(212, 175, 55, 0.25);
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.85);
+  }
+
+  .player-name {
+    font-size: 16px !important;
+  }
+
+  .player-rank,
+  .player-title,
+  .player-wins {
+    font-size: 13px !important;
+  }
+
+  .gold-pill,
+  .balance-box {
+    font-size: 16px !important;
+    padding: 5px 12px !important;
+  }
+
+  .tavern-banner h1,
+  .tavern-banner h2,
+  .inn-title,
+  .hall-title {
+    font-size: 15px !important;
+  }
+
+  .season-pass-badge,
+  .season2-badge {
+    font-size: 12px !important;
+    padding: 3px 10px !important;
+  }
+
+  .tavern-menu {
+    gap: 8px !important;
+  }
+
+  .tavern-menu .btn {
+    padding: 10px 8px !important;
+    font-size: 13px !important;
+  }
+
+  .npc-plate {
+    font-size: 13px !important;
+    padding: 3px 9px !important;
+  }
 }
