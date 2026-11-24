@@ -2187,8 +2187,8 @@ html, body {
   content: none !important;
 }
 
-/* 2. Возвращаем ноги Ловчему (снимаем маску, растворяя нижнюю часть спрайта)
-   и опускаем Сивку ниже, чтобы он опирался на бочки, а не висел над ними. */
+/* 2. Возвращаем ноги Ловчему (снимаем маску, растворяя нижнюю часть спрайта).
+   Сивка стоит на исходных координатах (см. базовые .npc-sivka выше). */
 .npc-lovchiy .npc-sprite {
   -webkit-mask-image: none !important;
   mask-image: none !important;
@@ -2197,14 +2197,14 @@ html, body {
 
 .npc-sivka {
   left: 3.7%;
-  top: 57.2%;
+  top: 53.7%;
   width: 41.3%;
   height: 37.9%;
   z-index: 8;
 }
 
 .npc-sivka .npc-sprite {
-  object-position: bottom center;
+  object-position: center;
 }
 
 /* 3. Компактнее верхняя панель игрока: меньше высоты, крупнее читаемые шрифты.
