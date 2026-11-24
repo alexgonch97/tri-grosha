@@ -239,7 +239,7 @@ html, body {
 .npc-ignat   { left: 25.8%; top: 36.8%; width: 24.4%; height: 38.5%; z-index: 6; }
 .npc-yashka  { left: 52.8%; top: 46.5%; width: 28.0%; height: 43.1%; z-index: 7; }
 .npc-lovchiy { left: 74.8%; top: 48.0%; width: 25.2%; height: 35.1%; z-index: 7; }
-.npc-sivka   { left: 3.7%;  top: 53.7%; width: 41.3%; height: 37.9%; z-index: 8; }
+.npc-sivka   { left: 3.7%;  top: 55.7%; width: 41.3%; height: 37.9%; z-index: 8; }
 
 /* Сивка перекрывает Игната своим большим спрайтом, поэтому срезаем у её
    зоны нажатия ТОЛЬКО пустой верхний правый угол над головой — клики по Игнату
@@ -2198,7 +2198,7 @@ html, body {
 }
 
 /* 2. Возвращаем ноги Ловчему (снимаем маску, растворяя нижнюю часть спрайта).
-   Сивка стоит в родной калиброванной рамке: top 53.7% (см. и базовые
+   Сивка стоит в родной калиброванной рамке: top 55.7% (см. и базовые
    .npc-sivka выше — обе записи синхронизированы), поэтому её кости ложатся
    на обод бочек, и спрайт не проваливается вниз в бочку. */
 .npc-lovchiy .npc-sprite {
@@ -2209,7 +2209,7 @@ html, body {
 
 .npc-sivka {
   left: 3.7% !important;
-  top: 53.7% !important;
+  top: 55.7% !important;
   width: 41.3% !important;
   height: 37.9% !important;
   z-index: 8;
@@ -2663,4 +2663,144 @@ html, body, #app {
   margin: 0 !important;
 }
 
+
+
+/* ==========================================================================
+   ФИКС ГЛАВНОГО ЭКРАНА ТАВЕРНЫ (шаг 2): обёртка сцены, пропорция 3:4 и
+   нижнее меню. Правила идут последними и перекрывают ранние стили.
+   Реальные классы проекта: #tavernScreen, .tavern-banner, .hall-scene-wrap
+   (обёртка вокруг #hallScene, см. index.html), .hall-scene, .tavern-menu,
+   .beg-btn, .promo-hint.
+   ========================================================================== */
+
+/* 1. Оболочка таверны — колонка на всю высоту: шапка (.tavern-banner) и
+   нижнее меню держат свой размер (flex: 0 0 auto), а всё оставшееся место
+   между ними гибко отдаётся обёртке сцены (.hall-scene-wrap, flex: 1 1 auto).
+   display: flex вешается ТОЛЬКО на активный экран (переключение экранов идёт
+   классом .active, см. showScreen() в game.js), поэтому скрытый #tavernScreen
+   не растягивается и не «налезает» на игровой стол. */
+#tavernScreen.active,
+#tavernScreen[style*="flex"] {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  height: 100% !important;
+  max-height: 100dvh !important;
+  overflow: hidden !important;
+  gap: 4px !important;
+  padding-top: 4px !important;
+  padding-bottom: max(8px, env(safe-area-inset-bottom)) !important;
+}
+
+.tavern-banner {
+  flex: 0 0 auto !important;
+}
+
+/* 2. Обёртка вокруг сцены зала: прозрачная и без рамки — внутри внешней рамки
+   нет ни второй обводки, ни тёмных пустых полос по бокам. По высоте гибко
+   сжимается и центрирует .hall-scene по обеим осям. */
+.hall-scene-wrap {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+}
+
+/* 3. Нижнее меню таверны (все 4 ряда, включая «Достижения») и кнопка милостыни
+   с подсказкой никогда не сжимаются и не уезжают за нижний край, а отступ
+   страницы снизу держит безопасную зону телефона. */
+.tavern-menu {
+  flex: 0 0 auto !important;
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 4px !important;
+  margin: 0 !important;
+}
+
+.tavern-menu .btn {
+  padding: 6px 4px !important;
+  font-size: 10.5px !important;
+  line-height: 1.15 !important;
+}
+
+.beg-btn,
+#tavernScreen .promo-hint {
+  flex: 0 0 auto !important;
+  margin: 0 !important;
+}
+
+/* 4. Телефон (до 767px): сцена зала подстраивается строго по высоте
+   оставшегося места (100% обёртки) с сохранением пропорции 3:4, поэтому
+   золотая рамка обхватывает картинку плотно, а не по краям окна, и не
+   выдавливает нижние кнопки. width: auto + aspect-ratio берут ширину из
+   высоты, а max-width: 100% не даёт сцене вылезти по бокам. */
+@media (max-width: 767px) {
+  .hall-scene {
+    position: relative !important;
+    flex: 0 1 auto !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    width: auto !important;
+    max-width: 100% !important;
+    aspect-ratio: 3 / 4 !important;
+    margin: 0 auto !important;
+  }
+}
+
+/* 5. ПК и широкие экраны (от 768px): сцена держит строгую пропорцию 3:4 и
+   центрируется в обёртке. Итоговая ширина ограничена формулой от высоты окна
+   (страховка идёт последней), поэтому на низких окнах сцена ужимается вместе
+   с пропорцией, а нижние кнопки всегда остаются на экране. */
+@media (min-width: 768px) {
+  .hall-scene {
+    position: relative !important;
+    width: 100% !important;
+    height: auto !important;
+    max-height: 100% !important;
+    aspect-ratio: 3 / 4 !important;
+    margin: 0 auto !important;
+  }
+
+  .hall-scene {
+    width: min(100%, calc((100dvh - 320px) * 0.75)) !important;
+    flex: 0 1 auto !important;
+    min-height: 0 !important;
+  }
+
+  /* На ПК кнопки меню остаются комфортно крупными (как в блоке от 768px выше),
+     но меню по-прежнему flex: 0 0 auto — оно не сжимается и не уезжает за
+     нижний край, а нижний отступ держит безопасную зону. */
+  .tavern-menu {
+    gap: 8px !important;
+  }
+
+  .tavern-menu .btn {
+    padding: 10px 8px !important;
+    font-size: 13px !important;
+  }
+}
+
+/* 6. Сивка сидит ровно на ободу бочек: калибровка top: 55.7% синхронна с
+   базовым правилом .npc-sivka выше. Маска спрайта отключена, поэтому кости
+   не растворяются и ложатся прямо на бочки. */
+.npc-sivka {
+  left: 3.7% !important;
+  top: 55.7% !important;
+  width: 41.3% !important;
+  height: 37.9% !important;
+  z-index: 8;
+}
+
+.npc-sivka .npc-sprite {
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+  object-position: center !important;
+}
 

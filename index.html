@@ -65,25 +65,30 @@
         <div class="season-badge" id="seasonBadge">🎟️ Пропуск в Сезон 2: ОТКРЫТ</div>
       </div>
 
-      <!-- Живая сцена зала: соперники сидят на своих местах -->
-      <div class="hall-scene" id="hallScene">
-        <div class="hall-veil"></div>
-        <div class="hall-glow"></div>
-        <div class="hall-fire"></div>
-        <div class="hall-dark-corner"></div>
+      <!-- Живая сцена зала: соперники сидят на своих местах.
+           Обёртка .hall-scene-wrap занимает всё свободное место между шапкой
+           и нижним меню, сама она прозрачна и без рамки (никаких вторых обводок
+           и тёмных полос по бокам), а .hall-scene внутри держит пропорцию 3:4. -->
+      <div class="hall-scene-wrap">
+        <div class="hall-scene" id="hallScene">
+          <div class="hall-veil"></div>
+          <div class="hall-glow"></div>
+          <div class="hall-fire"></div>
+          <div class="hall-dark-corner"></div>
 
-        <div class="hall-prop hall-counter" aria-hidden="true"></div>
-        <div class="hall-prop hall-barrel" aria-hidden="true"></div>
-        <div class="hall-prop hall-bench" aria-hidden="true"></div>
+          <div class="hall-prop hall-counter" aria-hidden="true"></div>
+          <div class="hall-prop hall-barrel" aria-hidden="true"></div>
+          <div class="hall-prop hall-bench" aria-hidden="true"></div>
 
-        <div class="hall-candles upg-candles-layer" id="hallCandles" aria-hidden="true"></div>
-        <div class="hall-sparks upg-candles-layer" id="hallSparks" aria-hidden="true"></div>
-        <div class="oak-frame upg-oak-layer" aria-hidden="true"></div>
+          <div class="hall-candles upg-candles-layer" id="hallCandles" aria-hidden="true"></div>
+          <div class="hall-sparks upg-candles-layer" id="hallSparks" aria-hidden="true"></div>
+          <div class="oak-frame upg-oak-layer" aria-hidden="true"></div>
 
-        <div class="npc-layer" id="npcLayer"></div>
-        <div class="npc-scroll" id="npcScroll"></div>
+          <div class="npc-layer" id="npcLayer"></div>
+          <div class="npc-scroll" id="npcScroll"></div>
 
-        <div class="hall-hint" id="hallHint">Выберите соперника в зале</div>
+          <div class="hall-hint" id="hallHint">Выберите соперника в зале</div>
+        </div>
       </div>
 
       <div class="tavern-menu">
