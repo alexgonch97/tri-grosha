@@ -2467,3 +2467,46 @@ html, body {
     padding: 3px 9px !important;
   }
 }
+
+/* ==========================================================================
+   ОТЛОЖЕННЫЕ КОСТИ (низ игрового стола): зона теперь визуально невидима.
+   Отложенные кости ровно выстраиваются в нижний ряд поверх арта стола и не
+   перекрывают нарисованные на столе записки. У .kept-area оставлена только
+   раскладка (flex-контейнер, центрирование кубиков в ряд и отступы).
+   ========================================================================== */
+
+/* 1. Скрываем заголовок «Отложенные кости (заблокированы)» — только у зоны
+   отложенных костей. Соседняя подпись «Кости на столе» (другой
+   .table-section-title вне .kept-area) остаётся видимой. */
+.kept-area .table-section-title,
+.kept-area::before,
+.kept-area::after {
+  display: none !important;
+  content: none !important;
+}
+
+/* 2. Контейнер отложенных костей: убираем фон, пунктирную рамку и тени,
+   сохраняя flex-раскладку (кубики по-прежнему встают аккуратным нижним
+   рядом). Перекрывает и вариант с изумрудным сукном (#app.upg-cloth). */
+.kept-area,
+#app.upg-cloth .kept-area {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* 3. Жёлтые точки/заклёпки по контуру игрового стола (.tavern-table),
+   добавляемые классом #app.upg-oak. На самой раме стола их рисует слой
+   .table-oak через ::before / ::after (repeating-linear-gradient), плюс
+   оставлены селекторы самой .tavern-table на случай декоративных точек. */
+#app.upg-oak .tavern-table::before,
+#app.upg-oak .tavern-table::after,
+.tavern-table::before,
+.tavern-table::after,
+.table-oak::before,
+.table-oak::after {
+  display: none !important;
+  content: none !important;
+}
+
