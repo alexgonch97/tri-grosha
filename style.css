@@ -2348,13 +2348,23 @@ html, body {
 #tavernScreen {
   height: 100% !important;
   max-height: 100dvh !important;
-  display: flex !important;
   flex-direction: column !important;
   justify-content: space-between !important;
   overflow: hidden !important;
   gap: 4px !important;
   padding-top: 4px !important;
   padding-bottom: 5px !important;
+}
+
+/* Экран таверны переключается классом .active (см. showScreen() в game.js).
+   display задаётся ТОЛЬКО здесь, иначе таверна «налезает» на игровой стол:
+   неактивный экран скрыт, активный — flex-колонка на всю высоту. */
+#tavernScreen:not(.active) {
+  display: none !important;
+}
+
+#tavernScreen.active {
+  display: flex !important;
 }
 
 .tavern-menu {
