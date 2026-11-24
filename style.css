@@ -2166,3 +2166,151 @@ html, body {
 .threshold-item.with-ach { flex-wrap: wrap; }
 .threshold-ach { flex: 1 0 100%; font-size: 10px; color: #a38f78; }
 .threshold-item.done .threshold-ach { color: #cbe4b6; }
+
+/* ==========================================================================
+   ФИКС ГЛАВНОГО ЭКРАНА ТАВЕРНЫ (#tavernScreen): сцена зала, шапка и меню.
+   Все правила идут последними и перекрывают ранние стили (при необходимости
+   через !important). Реальные классы проекта указаны рядом с общими из ТЗ.
+   ========================================================================== */
+
+/* 1. Убираем жёлтые точки/заклёпки по контуру сцены зала.
+   Их рисует дубовая рама улучшения #app.upg-oak — сам слой .oak-frame с
+   точками через ::before / ::after. Селекторы .hall-scene::before / ::after
+   оставлены на случай появления таких же декоративных точек. */
+#app.upg-oak .hall-scene::before,
+#app.upg-oak .hall-scene::after,
+.hall-scene::before,
+.hall-scene::after,
+.oak-frame::before,
+.oak-frame::after {
+  display: none !important;
+  content: none !important;
+}
+
+/* 2. Возвращаем ноги Ловчему (снимаем маску, растворяя нижнюю часть спрайта)
+   и опускаем Сивку ниже, чтобы он опирался на бочки, а не висел над ними. */
+.npc-lovchiy .npc-sprite {
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+  object-position: bottom center;
+}
+
+.npc-sivka {
+  left: 3.7%;
+  top: 57.2%;
+  width: 41.3%;
+  height: 37.9%;
+  z-index: 8;
+}
+
+.npc-sivka .npc-sprite {
+  object-position: bottom center;
+}
+
+/* 3. Компактнее верхняя панель игрока: меньше высоты, крупнее читаемые шрифты.
+   Реальная шапка таверны — .top-bar (.user-name / .user-title / .user-sub) и
+   баланс .gold-badge; литералы из ТЗ (.hud-header, .player-header, .player-rank,
+   .player-title, .player-wins, .gold-pill, .balance-box) оставлены для совместимости. */
+.top-bar,
+.hud-header,
+.player-header {
+  padding: 5px 8px !important;
+  min-height: 0 !important;
+  gap: 6px !important;
+  align-items: center !important;
+}
+
+.user-name,
+.player-name {
+  font-size: 13.5px !important;
+  line-height: 1.15 !important;
+}
+
+.user-title,
+.user-sub,
+.player-rank,
+.player-title,
+.player-wins {
+  font-size: 11px !important;
+  line-height: 1.2 !important;
+  margin-top: 1px !important;
+}
+
+.gold-badge,
+.gold-pill,
+.balance-box {
+  padding: 4px 9px !important;
+  font-size: 14px !important;
+}
+
+/* 4. Сжимаем блок «Постоялый двор «Три Гроша»» в компактную горизонтальную
+   плашку: герб слева, название и статус пропуска справа, без цитаты и отступов.
+   Реальные классы — .tavern-banner / .tavern-crest / .season-badge. */
+.tavern-banner,
+.inn-header,
+.hall-banner {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  text-align: left !important;
+  padding: 5px 10px !important;
+  margin: 0 !important;
+  min-height: 0 !important;
+  gap: 8px !important;
+}
+
+.tavern-banner .crest-badge,
+.inn-header .crest-badge,
+.hall-banner .crest-badge,
+.tavern-crest {
+  width: 26px !important;
+  height: 26px !important;
+  margin: 0 !important;
+  flex: 0 0 auto !important;
+}
+
+.tavern-banner h1,
+.tavern-banner h2,
+.inn-title,
+.hall-title {
+  font-size: 13px !important;
+  line-height: 1.15 !important;
+  margin: 0 !important;
+}
+
+/* Длинную художественную цитату в компактной шапке скрываем — место под сцену */
+.tavern-banner p,
+.tavern-quote,
+.inn-subtitle,
+.hall-subtitle {
+  display: none !important;
+}
+
+.season-badge,
+.season-pass-badge,
+.season2-badge {
+  padding: 2px 7px !important;
+  font-size: 10px !important;
+  margin: 0 !important;
+  white-space: nowrap !important;
+  flex: 0 0 auto !important;
+}
+
+/* 5. Растягиваем основную сцену зала на всё свободное место между компактной
+   шапкой и нижним меню, сохраняя строгую пропорцию 3:4. */
+#tavernScreen {
+  gap: 5px !important;
+  padding-top: 4px !important;
+  padding-bottom: 6px !important;
+}
+
+.hall-scene {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  width: auto !important;
+  max-width: 100% !important;
+  aspect-ratio: 3 / 4 !important;
+  margin: 0 auto !important;
+}
