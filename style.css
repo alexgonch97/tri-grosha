@@ -2379,20 +2379,21 @@ html, body {
   font-size: 10.5px !important;
 }
 
-/* Телефон (до 767px): сцена зала занимает всю свободную высоту между шапкой и
-   меню, а ширина считается из пропорции 3:4 (height × 0.75). min-height: 0
-   позволяет сцене сжиматься, поэтому нижнее меню всегда видно целиком и ни
-   одна кнопка не обрезается снизу. */
+/* Телефон (до 767px): сцена зала держит СТРОГУЮ пропорцию 3:4 и больше не
+   растягивается flex-ом по вертикали. Размер считается от доступной высоты
+   экрана (100dvh минус запас 240px под шапку и нижнее меню) с коэффициентом
+   3/4, поэтому на высоких телефонах сцена не вытягивается выше пропорции и
+   не приподнимает персонажей. flex: 0 0 auto запрещает рост/сжатие, а
+   margin: auto центрирует сцену и по горизонтали, и по вертикали. */
 @media (max-width: 767px) {
   .hall-scene {
     position: relative !important;
-    flex: 1 1 auto !important;
-    min-height: 0 !important;
-    height: 100% !important;
-    width: auto !important;
+    flex: 0 0 auto !important;
+    width: min(100%, calc((100dvh - 240px) * 0.75)) !important;
+    height: auto !important;
     max-width: 100% !important;
     aspect-ratio: 3 / 4 !important;
-    margin: 0 auto !important;
+    margin: auto !important;
   }
 }
 
