@@ -235,7 +235,7 @@ html, body {
 .npc-ignat   { left: 25.8%; top: 36.8%; width: 24.4%; height: 38.5%; z-index: 6; }
 .npc-yashka  { left: 52.8%; top: 46.5%; width: 28.0%; height: 43.1%; z-index: 7; }
 .npc-lovchiy { left: 74.8%; top: 48.0%; width: 25.2%; height: 35.1%; z-index: 7; }
-.npc-sivka   { left: 3.7%;  top: 53.7%; width: 41.3%; height: 37.9%; z-index: 8; }
+.npc-sivka   { left: 3.7%;  top: 56.6%; width: 41.3%; height: 37.9%; z-index: 8; }
 
 /* Сивка перекрывает Игната своим большим спрайтом, поэтому срезаем у её
    зоны нажатия ТОЛЬКО пустой верхний правый угол над головой — клики по Игнату
@@ -1323,7 +1323,7 @@ html, body {
   border-radius: 12px;
   padding: 10px 12px;
   text-align: center;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6), inset 0 0 18px rgba(212, 175, 55, 0.12);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
 }
 
 .tavern-banner h1 {
@@ -1477,11 +1477,18 @@ html, body {
 
 /* #2 «Дубовая стойка и бочонки»: резная дубовая рама с золотыми заклёпками */
 #app.upg-oak .top-bar,
-#app.upg-oak .tavern-banner,
 #app.upg-oak .npc-plate,
 #app.upg-oak .player-card {
   border-color: #d4af37;
   box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.35), 0 4px 12px rgba(0, 0, 0, 0.6);
+}
+
+/* Плашка-вывеска «Постоялый двор «Три Гроша»»: только ОДНА внешняя золотая
+   рамка. Второе кольцо (box-shadow spread) убрано — именно оно рисовало
+   лишнюю внутреннюю линию поверх герба и заголовка. */
+#app.upg-oak .tavern-banner {
+  border-color: #d4af37;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
 }
 
 #app.upg-oak .upg-oak-layer { display: block; }
@@ -2187,7 +2194,8 @@ html, body {
 }
 
 /* 2. Возвращаем ноги Ловчему (снимаем маску, растворяя нижнюю часть спрайта).
-   Сивка стоит на исходных координатах (см. базовые .npc-sivka выше). */
+   Сивка опущена локтями ровно на обод бочек: top 56.6% (см. и базовые
+   .npc-sivka выше — обе записи синхронизированы). */
 .npc-lovchiy .npc-sprite {
   -webkit-mask-image: none !important;
   mask-image: none !important;
@@ -2196,7 +2204,7 @@ html, body {
 
 .npc-sivka {
   left: 3.7%;
-  top: 53.7%;
+  top: 56.6%;
   width: 41.3%;
   height: 37.9%;
   z-index: 8;
@@ -2244,18 +2252,26 @@ html, body {
 
 /* 4. Сжимаем блок «Постоялый двор «Три Гроша»» в компактную горизонтальную
    плашку: герб слева, название и статус пропуска справа, без цитаты и отступов.
+   Высота строго по контенту (height/max-height не фиксируются, flex не сжимает
+   плашку), поэтому внешняя золотая рамка обхватывает герб, однострочный
+   заголовок и бейдж пропуска и ничего не перерезает.
    Реальные классы — .tavern-banner / .tavern-crest / .season-badge. */
 .tavern-banner,
 .inn-header,
 .hall-banner {
   display: flex !important;
   flex-direction: row !important;
+  flex-wrap: wrap !important;
   align-items: center !important;
   justify-content: space-between !important;
   text-align: left !important;
   padding: 5px 10px !important;
   margin: 0 !important;
-  min-height: 0 !important;
+  height: auto !important;
+  max-height: none !important;
+  min-height: auto !important;
+  flex: 0 0 auto !important;
+  overflow: visible !important;
   gap: 8px !important;
 }
 
@@ -2269,6 +2285,17 @@ html, body {
   flex: 0 0 auto !important;
 }
 
+/* Вложенные элементы плашки не рисуют собственных рамок: остаётся только
+   внешняя золотая рамка .tavern-banner — герб и заголовок идут без обводок,
+   поэтому ничто не перерезает текст. */
+.tavern-banner .tavern-crest,
+.tavern-banner .tavern-crest svg,
+.tavern-banner h1,
+.tavern-banner h2 {
+  border: 0 !important;
+  outline: 0 !important;
+}
+
 .tavern-banner h1,
 .tavern-banner h2,
 .inn-title,
@@ -2276,6 +2303,7 @@ html, body {
   font-size: 13px !important;
   line-height: 1.15 !important;
   margin: 0 !important;
+  white-space: nowrap !important;
 }
 
 /* Длинную художественную цитату в компактной шапке скрываем — место под сцену */
