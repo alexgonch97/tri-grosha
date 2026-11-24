@@ -2380,16 +2380,17 @@ html, body {
 }
 
 /* Телефон (до 767px): сцена зала держит СТРОГУЮ пропорцию 3:4 и больше не
-   растягивается flex-ом по вертикали. Размер считается от доступной высоты
-   экрана (100dvh минус запас 240px под шапку и нижнее меню) с коэффициентом
-   3/4, поэтому на высоких телефонах сцена не вытягивается выше пропорции и
-   не приподнимает персонажей. flex: 0 0 auto запрещает рост/сжатие, а
-   margin: auto центрирует сцену и по горизонтали, и по вертикали. */
+   растягивается flex-ом по вертикали. Убраны flex: 1 1 auto и height: 100%,
+   из-за которых на высоких телефонах сцена вытягивалась вверх и приподнимала
+   Сивку над бочками. Размер считается от доступной высоты экрана (100dvh минус
+   запас 235px под шапку и нижнее меню) с коэффициентом 3/4, поэтому сцена
+   сохраняет пропорцию и не вытягивается выше неё. flex: 0 0 auto запрещает
+   рост/сжатие, а margin: auto центрирует сцену по горизонтали и вертикали. */
 @media (max-width: 767px) {
   .hall-scene {
     position: relative !important;
     flex: 0 0 auto !important;
-    width: min(100%, calc((100dvh - 240px) * 0.75)) !important;
+    width: min(100%, calc((100dvh - 235px) * 0.75)) !important;
     height: auto !important;
     max-width: 100% !important;
     aspect-ratio: 3 / 4 !important;
@@ -2510,4 +2511,156 @@ html, body {
   display: none !important;
   content: none !important;
 }
+
+/* ==========================================================================
+   ЭКРАН ПАРТИИ (#gameScreen): фиксация в пределах окна, компактная верхняя
+   часть и увеличенный игральный стол (.tavern-table / #tableSurface).
+   Все правила идут последними и перекрывают ранние стили: верхний блок
+   (навигация + две рамки со счётом + строка статуса) занимает минимум высоты,
+   а стол забирает всё освободившееся место до нижних кнопок.
+   Переключение экранов идёт ТОЛЬКО классом .active (showScreen() в game.js),
+   поэтому display: flex вешается лишь на активный экран, а неактивный скрыт —
+   экраны не накладываются друг на друга.
+   Реальные классы проекта: .table-nav / .scoreboard / .player-card /
+   .player-header / .player-name / .turn-badge / .score-main /
+   .progress-bar-container / .turn-score-label / .vs-emblem / .ai-status /
+   .tavern-table (#tableSurface) / .controls.
+   ========================================================================== */
+
+/* 1. html / body / #app жёстко в пределах высоты окна — экран матча
+   зафиксирован и никуда не съезжает (без вылетов за экран). */
+html, body, #app {
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  overflow: hidden !important;
+}
+
+/* Неактивный экран партии скрыт (как и таверна), т.е. НЕ получает
+   display: flex !important — иначе он «налезет» на таверну при переключении. */
+#gameScreen:not(.active) {
+  display: none !important;
+}
+
+/* Активный экран партии — flex-колонка строго на всю высоту контейнера. */
+#gameScreen.active,
+#gameScreen[style*="flex"] {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  overflow: hidden !important;
+  gap: 4px !important;
+  padding-top: 4px !important;
+  padding-bottom: 6px !important;
+}
+
+/* 2. Сжимаем верхнюю часть #gameScreen. Строка «← В таверну | 1x |
+   соперник · ставка» — без пустого вертикального отступа. */
+#gameScreen .table-nav {
+  margin: 0 !important;
+  padding: 3px 6px !important;
+  min-height: 0 !important;
+}
+
+/* Контейнер с карточками игроков и кружком VS — максимально компактный. */
+#gameScreen .scoreboard {
+  margin: 0 !important;
+  padding: 0 !important;
+  align-items: center !important;
+}
+
+/* Внутренние отступы карточек игрока и соперника. */
+#gameScreen .player-card {
+  padding: 4px 7px !important;
+  min-height: 0 !important;
+  height: auto !important;
+  gap: 2px !important;
+}
+
+/* «ВАШ ХОД» строго в одну строку, имя рядом — с эллипсисом. */
+#gameScreen .turn-badge {
+  white-space: nowrap !important;
+  font-size: 8.5px !important;
+  line-height: 1.1 !important;
+  padding: 1px 5px !important;
+  flex: 0 0 auto !important;
+}
+
+#gameScreen .player-name {
+  font-size: 11px !important;
+  line-height: 1.1 !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+/* Крупный счёт «0 / 2000». */
+#gameScreen .score-main {
+  font-size: 15px !important;
+  line-height: 1.05 !important;
+  margin: 1px 0 !important;
+  padding: 0 !important;
+}
+
+/* Полоса прогресса. */
+#gameScreen .progress-bar-container {
+  height: 3px !important;
+  margin: 2px 0 !important;
+}
+
+/* Строка «В ходе: 0». */
+#gameScreen .turn-score-label {
+  font-size: 10.5px !important;
+  line-height: 1.1 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Значок «VS». */
+#gameScreen .vs-emblem {
+  width: 22px !important;
+  height: 22px !important;
+  font-size: 9px !important;
+  flex: 0 0 22px !important;
+}
+
+/* Жёлтая строка статуса под карточками («Ваш ход! Бросьте кости.») —
+   компактная и полностью видимая, не обрезается карточками. */
+#gameScreen .ai-status {
+  font-size: 11.5px !important;
+  line-height: 1.15 !important;
+  margin: 1px 0 !important;
+  padding: 0 !important;
+  min-height: 0 !important;
+  height: auto !important;
+  position: relative !important;
+  z-index: 3 !important;
+  overflow: visible !important;
+}
+
+/* Пустое «облако» реплики соперника не должно держать высоту: пока реплика
+   не показана (.show нет), элемент полностью выпадает из потока — иначе между
+   строкой навигации и рамками счёта остаётся пустой вертикальный отступ. */
+#gameScreen .speech-bubble:not(.show) {
+  display: none !important;
+}
+
+/* 3. Игральный стол растягивается на всё освободившееся пространство
+   до нижних кнопок. */
+#gameScreen .tavern-table,
+#gameScreen #tableSurface {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  height: auto !important;
+  margin: 0 !important;
+}
+
+/* Нижний ряд кнопок («БРОСИТЬ» и «В БАНК») зафиксирован снизу без растяжения. */
+#gameScreen .controls {
+  flex: 0 0 auto !important;
+  margin: 0 !important;
+}
+
 
